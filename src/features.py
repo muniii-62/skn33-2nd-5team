@@ -56,6 +56,16 @@ def make_snapshot(cutoff: pd.Timestamp, window: int, active_days: int = 365) -> 
                        on="CustomerID", how="left")
     snap["avg_order_value"] = snap["net_revenue"] / snap["frequency"]
 
+    # --- 09 확장 피처 ---
+    snap["avg_days_between_orders"] = snap["tenure_days"] / snap["frequency"]
+    snap["has_return"] = (snap["return_ratio"] > 0).astype(int)
+
+    recent_start = cutoff - pd.Timedelta(days=90)
+    recent_freq = (obs_active[obs_active["InvoiceDate"] >= recent_start]
+                   .groupby("CustomerID")["Invoice"].nunique())
+    snap["recent_activity_ratio"] = (snap["CustomerID"].map(recent_freq).fillna(0)
+                                      / snap["frequency"])
+
     # --- 이진화 피처 ---
     q20 = snap["avg_order_value"].quantile(0.2)
     snap["is_low_value"] = (snap["avg_order_value"] <= q20).astype(int)

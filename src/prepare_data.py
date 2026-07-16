@@ -32,12 +32,14 @@ CUTOFF = pd.Timestamp("2011-09-10")
 WINDOW = 90
 
 FEATURE_COLS = ["recency_days", "frequency", "distinct_products",
-                 "net_revenue", "tenure_days", "is_low_value", "is_uk"]
+                 "net_revenue", "tenure_days", "is_low_value", "is_uk",
+                 "avg_days_between_orders", "has_return", "recent_activity_ratio"]
 TARGET_COL = "churn"
 
 LOG_COLS = ["net_revenue"]
-SCALE_COLS = ["recency_days", "frequency", "distinct_products", "tenure_days"]
-PASSTHROUGH_COLS = ["is_low_value", "is_uk"]
+SCALE_COLS = ["recency_days", "frequency", "distinct_products", "tenure_days",
+              "avg_days_between_orders"]
+PASSTHROUGH_COLS = ["is_low_value", "is_uk", "has_return", "recent_activity_ratio"]
 
 
 
