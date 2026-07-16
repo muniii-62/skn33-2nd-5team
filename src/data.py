@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 DATASET = "mashlyn/online-retail-ii-uci"
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "raw"
 LOCAL_CSV = DATA_DIR / "online_retail_II.csv"
 
 def load_raw() -> pd.DataFrame:
@@ -15,7 +15,7 @@ def load_raw() -> pd.DataFrame:
         csv = next(Path(path).glob("*.csv"))
         df = pd.read_csv(csv, encoding="ISO-8859-1")
 
-        DATA_DIR.mkdir(exist_ok=True)
+        DATA_DIR.mkdir(parents=True,exist_ok=True)
         df.to_csv(LOCAL_CSV, index=False)
         print(f"저장됨: {LOCAL_CSV}")
 
