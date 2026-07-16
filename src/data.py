@@ -23,6 +23,21 @@ def load_raw() -> pd.DataFrame:
     df["InvoiceDate"] = pd.to_datetime(df["InvoiceDate"])
     return df
 
+def load_sales() -> pd.DataFrame:
+    """정제된 판매 데이터: 취소·비상품·내부기록·비회원 제외한 회원의 정상 구매만"""
+    df = load_raw()
+    is_cancel  = df["Invoice"].astype(str).str.startswith("C")
+    is_product = df["StockCode"].astype(str).str.match(r"^\d{5}[A-Za-z]*$")
+    mask = (~is_cancel & is_product
+            & (df["Quantity"] > 0) & (df["Price"] > 0)
+            & df["CustomerID"].notna())
+    sales = df[mask].copy()
+    sales["CustomerID"] = sales["CustomerID"].astype(int)
+    return sales
+
 if __name__ == "__main__":
     df = load_raw()
-    print(df.shape)
+    print("원본:", df.shape)
+    sales = load_sales()
+    print("정제:", sales.shape)
+    print("고객 수:", sales["CustomerID"].nunique())
