@@ -6,8 +6,8 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 전처리 완료 데이터 자동 생성 스크립트
 
 실행 (프로젝트 루트에서):
-    python src/data.py          # 원본 다운로드 (최초 1회, data/raw/에 저장)
-    python src/prepare_data.py  # 전처리 완료 파일 생성 (data/preprocessed/에 저장)
+    python -m src.data          # 원본 다운로드 (최초 1회, data/raw/에 저장)
+    python -m src.prepare_data  # 전처리 완료 파일 생성 (data/preprocessed/에 저장)
 
 생성 파일 (data/preprocessed/):
     X_train.csv, X_val.csv, X_test.csv   — 전처리(로그+스케일링) 완료된 피처
@@ -45,8 +45,10 @@ SCALE_COLS = ["recency_days", "frequency", "distinct_products", "tenure_days",
               "avg_days_between_orders"]
 PASSTHROUGH_COLS = ["is_low_value", "is_uk", "has_return", "recent_activity_ratio"]
 
-
-
+# ColumnTransformer는 등록된 순서(log_scale → scale → passthrough)대로 결과를 이어붙인다.
+# 저장 시 컬럼명은 반드시 이 순서(OUTPUT_COLS)를 써야 한다. FEATURE_COLS 순서로 라벨을
+# 붙이면 실제 값과 컬럼명이 어긋난다 (예: net_revenue 값에 recency_days 이름이 붙는 등).
+OUTPUT_COLS = LOG_COLS + SCALE_COLS + PASSTHROUGH_COLS
 
 
 def build_preprocessor() -> ColumnTransformer:
@@ -85,9 +87,9 @@ def main():
     out_dir = Path(__file__).resolve().parent.parent / "data" / "preprocessed"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    pd.DataFrame(X_train_processed, columns=FEATURE_COLS).to_csv(out_dir / "X_train.csv", index=False)
-    pd.DataFrame(X_val_processed, columns=FEATURE_COLS).to_csv(out_dir / "X_val.csv", index=False)
-    pd.DataFrame(X_test_processed, columns=FEATURE_COLS).to_csv(out_dir / "X_test.csv", index=False)
+    pd.DataFrame(X_train_processed, columns=OUTPUT_COLS).to_csv(out_dir / "X_train.csv", index=False)
+    pd.DataFrame(X_val_processed, columns=OUTPUT_COLS).to_csv(out_dir / "X_val.csv", index=False)
+    pd.DataFrame(X_test_processed, columns=OUTPUT_COLS).to_csv(out_dir / "X_test.csv", index=False)
 
     y_train.to_csv(out_dir / "y_train.csv", index=False)
     y_val.to_csv(out_dir / "y_val.csv", index=False)
@@ -97,6 +99,7 @@ def main():
         pickle.dump(preprocessor, f)
 
     print("생성 완료:", sorted(p.name for p in out_dir.glob("*")))
+    print("컬럼 순서:", OUTPUT_COLS)
     print(f"Train {len(X_train)}행 (이탈률 {y_train.mean():.3f})")
     print(f"Val   {len(X_val)}행 (이탈률 {y_val.mean():.3f})")
     print(f"Test  {len(X_test)}행 (이탈률 {y_test.mean():.3f}) — 최종 평가 전용, 팀원 example에서 미사용")
