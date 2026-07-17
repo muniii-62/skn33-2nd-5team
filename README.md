@@ -40,6 +40,12 @@ pred = model.predict(X_val)
   is_low_value, is_uk (총 7개)
 - 상세 근거는 `전처리_결과서.md` 및 `notebooks/01_eda_log.ipynb`, `02_eda_customer.ipynb` 참고
 
+## 타깃 정의
+
+`churn` 컬럼: **1 = 이탈, 0 = 잔류(유지)**
+
+기준일(2011-09-10) 이전 365일 내 구매 이력이 있는 활성 고객 중,
+기준일 이후 90일간 재구매가 없으면 이탈(1)로 라벨링됨.
 ## 폴더 구조
 
 ```

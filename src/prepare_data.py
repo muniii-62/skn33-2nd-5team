@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 """
 전처리 완료 데이터 자동 생성 스크립트
 
