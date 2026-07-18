@@ -67,8 +67,6 @@ def make_snapshot(cutoff: pd.Timestamp, window: int, active_days: int = 365) -> 
                                       / snap["frequency"])
 
     # --- 이진화 피처 ---
-    q20 = snap["avg_order_value"].quantile(0.2)
-    snap["is_low_value"] = (snap["avg_order_value"] <= q20).astype(int)
     snap["is_uk"] = (snap["country"] == "United Kingdom").astype(int)
 
     # --- 라벨 ---

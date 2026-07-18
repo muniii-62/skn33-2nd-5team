@@ -36,7 +36,7 @@ CUTOFF = pd.Timestamp("2011-09-10")
 WINDOW = 90
 
 FEATURE_COLS = ["recency_days", "frequency", "distinct_products",
-                 "net_revenue", "tenure_days", "is_low_value", "is_uk",
+                 "net_revenue", "tenure_days", "avg_order_value", "is_uk",
                  "avg_days_between_orders", "has_return", "recent_activity_ratio"]
 TARGET_COL = "churn"
 
@@ -76,6 +76,12 @@ def main():
     X_train, X_val, y_train, y_val = train_test_split(
         X_trainval, y_trainval, test_size=0.25, stratify=y_trainval, random_state=RANDOM_STATE
     )
+
+    # is_low_value: Train만으로 threshold 계산 후 세 세트 모두에 동일 적용 (데이터 누수 방지)
+    q20 = X_train["avg_order_value"].quantile(0.2)
+    for df in (X_train, X_val, X_test):
+        df["is_low_value"] = (df["avg_order_value"] <= q20).astype(int)
+        df.drop(columns=["avg_order_value"], inplace=True)
 
     preprocessor = build_preprocessor()
     preprocessor.fit(X_train)  # Train으로만 fit (데이터 누수 방지)
