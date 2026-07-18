@@ -100,3 +100,23 @@ is_low_value로 대체) — 근거는 `전처리_결과서.md` 참고
   VIF를 직접 확인해 결정해도 좋습니다.
 
 상세 상관관계는 `02_eda_customer.ipynb` 최종 히트맵 참고.
+
+## Data Card
+
+| 항목 | 작성 내용 |
+|---|---|
+| 데이터 이름 | Online Retail II |
+| 출처 URL | UCI ML Repository (https://archive.ics.uci.edu/dataset/502/online+retail+ii), Kaggle 미러 `mashlyn/online-retail-ii-uci` |
+| 실제/합성 여부 | 실제 데이터 (영국 온라인 도매상 실거래 로그) |
+| 라이선스 | CC BY 4.0 |
+| 수집 기간 | 2009-12-01 ~ 2011-12-09 (약 2년) |
+| 행·열 수 | 원본 1,067,371행 × 8열 → 정제 후 802,632행 → 고객 스냅샷 4,320행 × 10피처 |
+| 분석 단위 | 고객 1명 = 1행 (원본은 거래 라인 단위, 09에서 고객 단위로 집계) |
+| Target | `churn` (1=이탈, 0=잔류) |
+| Target 생성 규칙 | 기준일(2011-09-10) 이전 365일 내 구매 이력 있는 활성 고객 대상, 기준일 이후 90일간 재구매 없으면 이탈(1). 윈도우(90일)는 재구매 간격 분포의 75~90% 지점에서 도출 |
+| 관찰 기간 | 데이터 시작 ~ 기준일(2011-09-10), 취소 포함 원본 기준 순매출 계산 |
+| 결과 기간 | 기준일 이후 90일 (정제된 실구매 데이터 기준 재구매 여부 판정) |
+| 주요 Feature | recency_days, frequency, distinct_products, net_revenue, tenure_days, avg_days_between_orders, has_return, recent_activity_ratio, is_uk, is_low_value (10개) |
+| 클래스 비율 | 이탈 49.4% / 잔류 50.6% (균형에 가까움, 별도 샘플링 불필요) |
+| 개인정보 포함 여부 | 없음 — CustomerID는 익명 숫자, 이름·이메일 등 식별정보 없음 |
+| 예상 위험 | 취소-구매 쌍 미상쇄 시 유령 매출 발생(순매출 계산으로 해결), CustomerID 결측 22.8%가 정상구매(비회원)인지 검증 필요(3중 검증 완료), 컬럼-값 순서 밀림·is_low_value 데이터 누수 등 파이프라인 버그(발견 및 수정 완료), recency_days-avg_days_between_orders 다중공선성(상관 0.72, 선형모델 사용 시 주의) |
