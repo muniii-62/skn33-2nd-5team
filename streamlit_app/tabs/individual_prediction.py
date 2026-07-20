@@ -45,18 +45,31 @@ def render(model, preprocessor):
                 "↩️ 취소 경험 있음?", ["아니오", "예"], key="ind_has_return",
                 help="관찰 기간 중 주문 취소/반품 이력이 한 번이라도 있었는지",
             )
-            recent_activity_ratio = st.slider(
-                "📈 최근 구매 활동 비중", 0.0, 1.0, 0.1, key="ind_activity_ratio",
-                help="전체 구매 횟수 중 '최근 90일 이내' 구매가 차지하는 비율. "
-                     "예: 총 10번 구매 중 최근 90일 내 3번이면 0.3 — 값이 높을수록 "
-                     "최근에도 활발히 구매 중이라는 뜻입니다.",
+            if "ind_activity_count" in st.session_state:
+                st.session_state["ind_activity_count"] = min(
+                    max(int(st.session_state["ind_activity_count"]), 0),
+                    frequency,
+                )
+
+            recent_activity_count = st.slider(
+                "📈 최근 90일 이내 구매 횟수",
+                min_value=0,
+                max_value=frequency,
+                value=min(1, frequency),
+                step=1,
+                key="ind_activity_count",
+                help="전체 구매 횟수 중 최근 90일 이내에 구매한 횟수를 정수로 선택합니다.",
             )
-            st.caption("💡 예: 총 10번 구매 중 최근 90일 내 3번이면 0.3")
+            recent_activity_ratio = recent_activity_count / frequency
+            st.caption(
+                f"💡 전체 {frequency}회 중 최근 {recent_activity_count}회 "
+                f"→ 최근 구매 활동 비중 {recent_activity_ratio:.0%}"
+            )
 
             with st.expander("부가 정보 (예측 영향 적음)"):
                 st.caption(
                     "아래 두 항목은 SHAP 분석 결과 이탈 예측에 미치는 영향이 "
-                    "거의 없는 것으로 확인됐습니다(LightGBM 기준). 참고용으로만 남겨둡니다."
+                    "거의 없는 것으로 확인됐습니다(최종 XGBoost 모델 기준). 참고용으로만 남겨둡니다."
                 )
                 is_low_value = st.selectbox(
                     "💸 평균 주문금액 하위 20%?", ["아니오", "예"], key="ind_low_value",
@@ -91,7 +104,9 @@ def render(model, preprocessor):
     # 원본 스케일 입력을 preprocessor로 변환 후 예측 (모델은 스케일링된 데이터로 학습됨)
     input_processed = preprocessor.transform(input_df)
     input_processed_df = pd.DataFrame(input_processed, columns=FEATURE_ORDER)
-    churn_proba = model.predict_proba(input_processed_df)[0, 1]
+    # XGBoost는 numpy.float32를 반환하지만 Streamlit의 st.progress는
+    # Python 기본 float/int만 허용하므로 여기서 명시적으로 변환합니다.
+    churn_proba = float(model.predict_proba(input_processed_df)[0, 1])
 
     st.write("")
     # [Doo 작업] 이 탭에만 있던 독립 Threshold 슬라이더를 제거했습니다.
@@ -143,7 +158,8 @@ def render(model, preprocessor):
         """,
         unsafe_allow_html=True,
     )
-    st.progress(min(max(churn_proba, 0.0), 1.0))
+    progress_percent = int(round(min(max(churn_proba, 0.0), 1.0) * 100))
+    st.progress(progress_percent)
 
     with st.expander("⚠️ 모델 한계 및 주의사항"):
         st.markdown("""
@@ -152,5 +168,5 @@ def render(model, preprocessor):
         - 본 모델은 정형 데이터(구매 이력 기반)로 학습되었으며, 상품 리뷰·문의 등
           비정형 데이터는 반영되지 않았습니다.
         - is_uk, is_low_value, has_return 피처는 이탈 예측 기여도가 낮게 나타났습니다
-          (SHAP 분석 결과, LightGBM과 RandomForest 양쪽에서 일관됨).
+          (최종 XGBoost 모델의 feature importance 분석 결과).
         """)

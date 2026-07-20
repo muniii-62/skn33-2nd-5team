@@ -1,16 +1,16 @@
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-MODEL_PATH = PROJECT_ROOT / "models" / "final" / "rf_prototype.joblib"
+MODEL_PATH = PROJECT_ROOT / "models" / "final" / "model_final.joblib"
 PREPROCESSOR_PATH = PROJECT_ROOT / "models" / "final" / "preprocessor_prototype.joblib"
 
 
 
 # [Doo 작업] Threshold 기능에서 사용하는 공통 기준값
-# DEFAULT_THRESHOLD: 현재 RandomForest Validation에서 Recall 0.80 이상을
-# 만족하는 운영 권장값입니다. 최종 모델이 교체되면 다시 검증해야 합니다.
+# DEFAULT_THRESHOLD: 최종 XGBoost(jhd) 모델의 Validation 결과에서 Recall 0.80
+# 이상을 만족하면서 F1이 가장 높은 운영 권장값입니다.
 # HIGH_RISK_THRESHOLD: 개별 예측 화면의 고위험 고객 구분 기준입니다.
-DEFAULT_THRESHOLD = 0.44
+DEFAULT_THRESHOLD = 0.38
 HIGH_RISK_THRESHOLD = 0.65
 
 FEATURE_ORDER = [
