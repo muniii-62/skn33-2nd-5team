@@ -26,7 +26,14 @@ def _detail_row(label, value):
 
 def render(model, preprocessor):
     snap = score_customers(load_customer_table(), model, preprocessor)
+
+    # [Doo 작업] 캠페인 기준 설정 화면에서 `기준 적용하기`로 확정한 값을 가져와
+    # 고객별 모델 위험군 여부를 계산합니다. 기존 구매주기 기반 고객유형은 유지합니다.
+    threshold = st.session_state["applied_threshold"]
     snap["고객유형"] = snap.apply(segment, axis=1)
+    snap["모델판정"] = snap["이탈확률"].ge(threshold).map(
+        {True: "모델 위험군", False: "모델 일반군"}
+    )
     snap["평소_주기_대비"] = (snap["recency_days"] / snap["avg_days_between_orders"]).round(2)
 
     col1, col2 = st.columns([1.3, 1])
@@ -34,15 +41,24 @@ def render(model, preprocessor):
     with col1:
         st.subheader("캠페인 대상 고객")
         filter_choice = st.radio(
-            "필터", ["전체", "이탈 위험 높음", "첫 구매 고객", "장기 구매 주기"],
+            "필터", ["전체", "모델 위험군", "이탈 위험 높음", "첫 구매 고객", "장기 구매 주기"],
             horizontal=True, key="risk_filter", label_visibility="collapsed",
         )
 
-        view = snap if filter_choice == "전체" else snap[snap["고객유형"] == filter_choice]
+        # [Doo 작업] 기존 룰 기반 필터에 `모델 위험군` 필터를 추가했습니다.
+        if filter_choice == "전체":
+            view = snap
+        elif filter_choice == "모델 위험군":
+            view = snap[snap["모델판정"] == "모델 위험군"]
+        else:
+            view = snap[snap["고객유형"] == filter_choice]
         view = view.sort_values("이탈확률", ascending=False)
 
         st.markdown("**우선순위 고객 목록**")
-        st.caption(f"총 {len(view):,}명 중 이탈확률 높은 순으로 표시 (행을 클릭하면 오른쪽에 상세 정보가 뜹니다)")
+        st.caption(
+            f"캠페인 선정 기준 {threshold:.0%} · 총 {len(view):,}명 중 이탈확률 높은 순으로 표시 "
+            "(행을 클릭하면 오른쪽에 상세 정보가 뜹니다)"
+        )
         display_df = view[["CustomerID", "고객유형", "이탈확률", "평소_주기_대비"]].reset_index(drop=True).copy()
         display_df["이탈확률"] = (display_df["이탈확률"] * 100).round(1).astype(str) + "%"
         display_df["평소_주기_대비"] = display_df["평소_주기_대비"].astype(str) + "배"
