@@ -11,7 +11,7 @@ from config import FEATURE_ORDER, FEATURE_LABELS
 
 def render(model, preprocessor):
     st.markdown("### 🧭 어떤 정보가 이탈 예측에 중요할까?")
-    st.caption("모델이 예측할 때 각 정보를 얼마나 많이 참고하는지를 나타냅니다 (RandomForest 내장 중요도 기준).")
+    st.caption("최종 XGBoost 모델이 예측할 때 각 정보를 얼마나 많이 참고하는지를 나타냅니다 (모델 내장 중요도 기준).")
 
     if not hasattr(model, "feature_importances_"):
         st.warning("현재 모델은 feature_importances_를 지원하지 않습니다 (트리 기반 모델에서만 제공).")

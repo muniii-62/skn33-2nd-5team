@@ -53,7 +53,7 @@ st.markdown(
     <div style="margin-bottom: 18px;">
         <span style="font-size: 26px; font-weight: 700;">🛒 이커머스 고객 이탈 예측</span>
         <div style="color: #2F80ED; font-size: 13px; font-weight: 600; margin-top: 4px;">
-            RandomForest 기반 이탈 예측 · 위험고객 세분화 캠페인 대시보드
+            XGBoost 기반 이탈 예측 · 위험고객 세분화 캠페인 대시보드
         </div>
     </div>
     """,
