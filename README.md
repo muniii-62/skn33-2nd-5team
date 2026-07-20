@@ -12,7 +12,7 @@ python src/prepare_data.py  # 전처리 완료 데이터 생성 (data/preprocess
 
 ## 모델 학습 시작하기
 
-`models/example_load.py`를 본인 노트북 맨 위 셀에 그대로 복사해서 붙여넣으면
+`models/example.ipynb`를 본인 노트북 맨 위 셀에 그대로 복사해서 붙여넣으면
 `X_train`, `y_train`, `X_val`, `y_val`이 바로 준비됩니다.
 
 ```python
@@ -25,7 +25,7 @@ pred = model.predict(X_val)
 - **Val로 모델을 비교**하고 튜닝하세요. 여러 번 확인해도 괜찮습니다.
 - **Test는 절대 개인적으로 사용하지 마세요.** 팀 전체가 "이 모델로 최종 확정" 합의한 뒤,
   단 한 번만 평가합니다. (`data/preprocessed/X_test.csv`, `y_test.csv`에 존재하지만
-  `example_load.py`에서 의도적으로 불러오지 않습니다.)
+  `example.ipynb`에서 의도적으로 불러오지 않습니다.)
 - **비교 기준은 Recall 우선**입니다 (이탈 고객을 놓치지 않는 것이 중요).
   Precision, AUC도 함께 기록해 공유해주세요.
 - `random_state=42`는 전체 팀 공통 시드입니다. 임의로 바꾸지 마세요 (재현성 깨짐).
@@ -36,9 +36,9 @@ pred = model.predict(X_val)
 - 이탈 정의: 기준일(2011-09-10) 이전 365일 내 구매 이력 있는 활성 고객 대상,
   기준일 이후 90일간 무구매 = 이탈
 - 최종 고객 수: 4,320명 (이탈률 49.4%)
-- 피처: recency_days, frequency, distinct_products, net_revenue, tenure_days,
-  is_low_value, is_uk (총 7개)
-- 상세 근거는 `전처리_결과서.md` 및 `notebooks/01_eda_log.ipynb`, `02_eda_customer.ipynb` 참고
+- 피처: 최종 10개 (아래 "최종 피처 세트" 표 참고)
+- 상세 근거는 `전처리_결과서.md`(작성 예정) 및 `notebooks/eda_log.ipynb`,
+  `notebooks/eda_customer.ipynb` 참고
 
 ## 타깃 정의
 
@@ -46,21 +46,37 @@ pred = model.predict(X_val)
 
 기준일(2011-09-10) 이전 365일 내 구매 이력이 있는 활성 고객 중,
 기준일 이후 90일간 재구매가 없으면 이탈(1)로 라벨링됨.
+
 ## 폴더 구조
 
 ```
 data/
-  raw/            # 원본 (자동 생성, git 미포함)
-  preprocessed/   # 전처리 완료 (자동 생성, git 미포함)
-notebooks/        # EDA 노트북
+  raw/                         # 원본 데이터(자동 생성, Git 미포함)
+  preprocessed/                # 분할·전처리 데이터와 운영용 임계값(Git 미포함)
+notebooks/
+  eda_log.ipynb                # 거래 로그 EDA
+  eda_customer.ipynb           # 고객 단위 EDA
+  preprocessing.ipynb          # 전처리 검토
+  check.ipynb                  # 데이터 확인
 src/
-  data.py         # 원본 로드
-  features.py     # 고객 스냅샷(RFM+파생피처) 생성
-  transforms.py   # 전처리 변환 함수
-  prepare_data.py # Train/Val/Test 분리 + 전처리 실행 스크립트
+  data.py                      # 원본 다운로드 및 정제 데이터 로드
+  features.py                  # 고객 스냅샷(RFM+파생피처) 생성
+  transforms.py                # 전처리 변환 함수
+  prepare_data.py              # Train/Val/Test 분리 및 전처리
 models/
-  example_load.py # 팀원용 데이터 로드 예시
+  example.ipynb                # 팀원용 데이터 로드 예시
+  final/                       # Streamlit에서 사용하는 최종 모델·전처리기
+  hyn/, jhd/, kmk/, ksj/, lsy/ # 팀원별 모델 실험
+streamlit_app/
+  app.py                       # 대시보드 진입점
+  config.py                    # 모델 경로, 피처 순서와 표시명
+  model_loader.py              # 모델·전처리기 로드 및 호환성 검증
+  customer_scoring.py          # 운영 고객 스냅샷·점수 계산
+  tabs/                        # 세분화, 개별 예측, Lift, ROI, 중요도 화면
+프로젝트_진행정리.pdf           # 프로젝트 진행 정리
+한계_추후삭제예정.md            # 모델 한계 메모
 ```
+
 ## 최종 피처 세트
 
 | 피처 | 설명 | 신호 강도 | 처리 |
@@ -76,13 +92,11 @@ models/
 | tenure_days | 첫 구매 후 경과일 | 중간 (상관 -0.14), 비단조 | StandardScaler |
 | is_uk | UK 거주 여부 | 약함 (47%→50%) | 없음(이진) |
 
-**제외된 피처**: return_ratio(무신호), avg_order_value 연속형(무신호, is_low_value로 대체)
-
 **has_return 방향 반전**: 당초 "반품 많으면 불만족→이탈"을 가정했으나 실제로는 반대.
 반품은 거래가 지속되는 증거이며, 이미 이탈한 고객은 반품 기회 자체가 없음.
 
 **제외된 피처**: return_ratio(무신호, 상관 0.04), avg_order_value 연속형(무신호,
-is_low_value로 대체) — 근거는 `전처리_결과서.md` 참고
+is_low_value로 대체) — 근거는 `전처리_결과서.md`(작성 예정) 참고
 
 > 로그 변환은 net_revenue에만 적용됩니다. EDA(07)에서 이 피처만 소수 고객이
 > 매출 대부분을 차지하는 파레토 구조(평균≫중앙값)임을 확인했고, 나머지 피처는
@@ -99,7 +113,7 @@ is_low_value로 대체) — 근거는 `전처리_결과서.md` 참고
   `avg_days_between_orders`가 이탈과의 상관은 근소하게 더 높습니다(0.37 vs 0.35).
   VIF를 직접 확인해 결정해도 좋습니다.
 
-상세 상관관계는 `02_eda_customer.ipynb` 최종 히트맵 참고.
+상세 상관관계는 `notebooks/eda_customer.ipynb` 최종 히트맵 참고.
 
 ## Data Card
 
