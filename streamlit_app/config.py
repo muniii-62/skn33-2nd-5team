@@ -4,6 +4,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = PROJECT_ROOT / "models" / "final" / "rf_prototype.joblib"
 PREPROCESSOR_PATH = PROJECT_ROOT / "models" / "final" / "preprocessor_prototype.joblib"
 
+
+
 # [Doo 작업] Threshold 기능에서 사용하는 공통 기준값
 # DEFAULT_THRESHOLD: 현재 RandomForest Validation에서 Recall 0.80 이상을
 # 만족하는 운영 권장값입니다. 최종 모델이 교체되면 다시 검증해야 합니다.
