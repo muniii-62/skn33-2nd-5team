@@ -301,7 +301,9 @@ def render(model):
     if "threshold_apply_success" not in st.session_state:
         st.session_state["threshold_apply_success"] = False
 
-    st.markdown("### 🎯 Doo — 캠페인 대상 선정 기준")
+    # [Doo 작업] 사용자용 화면에서는 작성자 표시를 제거하고 기능 중심 제목만 보여줍니다.
+    # 작업자 구분을 위한 Doo 표시는 파일명과 코드 내부 주석에 유지합니다.
+    st.markdown("### 🎯 캠페인 대상 선정 기준")
     st.markdown(
         "이탈 가능성이 몇 % 이상인 고객에게 캠페인을 진행할지 결정합니다.  \n"
         "적용한 기준은 위험고객 세분화, 개별 고객 예측, ROI 화면에 공통 적용됩니다."
