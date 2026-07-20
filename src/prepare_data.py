@@ -13,12 +13,14 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
     X_train.csv, X_val.csv, X_test.csv   — 전처리(로그+스케일링) 완료된 피처
     y_train.csv, y_val.csv, y_test.csv   — 타깃(churn)
     preprocessor.pkl                      — 학습된 전처리 Pipeline (재사용용)
+    is_low_value_threshold.json           — is_low_value 계산에 쓴 Train 기준 q20 (운영 재현용)
 
-주의: Test 파일도 여기 저장은 되지만, 팀원용 로드 예시(models/example_load.py)에서는
+주의: Test 파일도 여기 저장은 되지만, 팀원용 로드 예시(models/example.ipynb)에서는
 의도적으로 불러오지 않는다. Val로 모델을 충분히 비교한 뒤,
 최종 후보가 정해지면 그 모델에 한해서만 Test로 평가한다 (딱 1회).
 """
 
+import json
 import pickle
 from pathlib import Path
 
@@ -77,11 +79,18 @@ def main():
         X_trainval, y_trainval, test_size=0.25, stratify=y_trainval, random_state=RANDOM_STATE
     )
 
+    out_dir = Path(__file__).resolve().parent.parent / "data" / "preprocessed"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
     # is_low_value: Train만으로 threshold 계산 후 세 세트 모두에 동일 적용 (데이터 누수 방지)
     q20 = X_train["avg_order_value"].quantile(0.2)
     for df in (X_train, X_val, X_test):
         df["is_low_value"] = (df["avg_order_value"] <= q20).astype(int)
         df.drop(columns=["avg_order_value"], inplace=True)
+
+    # Streamlit 등 운영 코드에서 동일한 기준으로 is_low_value를 재현할 수 있도록 저장
+    with open(out_dir / "is_low_value_threshold.json", "w") as f:
+        json.dump({"avg_order_value_q20": float(q20)}, f, indent=2)
 
     preprocessor = build_preprocessor()
     preprocessor.fit(X_train)  # Train으로만 fit (데이터 누수 방지)
@@ -89,9 +98,6 @@ def main():
     X_train_processed = preprocessor.transform(X_train)
     X_val_processed = preprocessor.transform(X_val)
     X_test_processed = preprocessor.transform(X_test)
-
-    out_dir = Path(__file__).resolve().parent.parent / "data" / "preprocessed"
-    out_dir.mkdir(parents=True, exist_ok=True)
 
     pd.DataFrame(X_train_processed, columns=OUTPUT_COLS).to_csv(out_dir / "X_train.csv", index=False)
     pd.DataFrame(X_val_processed, columns=OUTPUT_COLS).to_csv(out_dir / "X_val.csv", index=False)
@@ -106,6 +112,7 @@ def main():
 
     print("생성 완료:", sorted(p.name for p in out_dir.glob("*")))
     print("컬럼 순서:", OUTPUT_COLS)
+    print(f"is_low_value threshold (q20): {q20:.2f}")
     print(f"Train {len(X_train)}행 (이탈률 {y_train.mean():.3f})")
     print(f"Val   {len(X_val)}행 (이탈률 {y_val.mean():.3f})")
     print(f"Test  {len(X_test)}행 (이탈률 {y_test.mean():.3f}) — 최종 평가 전용, 팀원 example에서 미사용")
