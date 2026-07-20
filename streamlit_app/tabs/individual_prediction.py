@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from config import FEATURE_ORDER
+from config import FEATURE_ORDER, HIGH_RISK_THRESHOLD
 
 
 def render(model, preprocessor):
@@ -94,25 +94,25 @@ def render(model, preprocessor):
     churn_proba = model.predict_proba(input_processed_df)[0, 1]
 
     st.write("")
-    threshold = st.slider(
-        "⚙️ 판정 기준 (threshold)", 0.0, 1.0, 0.44, 0.01, key="ind_threshold",
-        help="이탈확률이 이 값 이상이면 '중위험'으로 분류합니다. 값을 낮추면 더 많은 "
-             "고객을 위험군으로 잡아내지만(Recall↑) 오탐도 늘어납니다(Precision↓).",
+    # [Doo 작업] 이 탭에만 있던 독립 Threshold 슬라이더를 제거했습니다.
+    # `캠페인 기준 설정`에서 적용 버튼으로 확정한 값을 사용해 탭별 기준 불일치를 방지합니다.
+    threshold = st.session_state["applied_threshold"]
+    st.info(
+        f"현재 이탈 가능성 **{threshold:.0%} 이상**인 고객을 관리 대상으로 선정합니다. "
+        "기준 변경은 `캠페인 기준 설정` 탭에서 할 수 있습니다."
     )
-    with st.expander("threshold가 뭔가요?"):
+    with st.expander("캠페인 대상 선정 기준이 뭔가요?"):
         st.markdown(
-            "모델이 출력하는 건 0~1 사이의 '이탈 확률'이고, threshold는 그 확률을 "
-            "**몇 % 이상부터 위험군으로 볼지** 정하는 기준선입니다.\n\n"
-            "- **threshold를 낮추면** → 위험군으로 분류되는 고객이 늘어남 (덜 놓침, Recall↑) "
-            "대신 실제로는 안 떠날 고객까지 위험군에 섞임 (Precision↓)\n"
-            "- **threshold를 높이면** → 확실히 위험한 고객만 골라냄 (Precision↑) "
-            "대신 놓치는 이탈 고객이 늘어남 (Recall↓)\n\n"
-            "팀에서는 '이탈 고객을 놓치지 않는 것'을 우선순위로 두고, "
-            "**Recall 0.80 이상을 유지하는 선에서 F1-score가 가장 높은 지점**을 "
-            "기준값으로 선택했습니다 (RF 튜닝 결과 기준 약 0.40~0.44)."
+            "모델이 계산한 이탈 가능성을 바탕으로 **몇 % 이상인 고객부터 캠페인 대상으로 "
+            "관리할지** 정하는 기준입니다.\n\n"
+            "- 기준을 낮추면 더 많은 고객을 관리해 이탈 고객을 덜 놓치지만 비용이 늘 수 있습니다.\n"
+            "- 기준을 높이면 가능성이 높은 고객에게 집중할 수 있지만 일부 이탈 고객을 놓칠 수 있습니다.\n\n"
+            "현재 권장 기준은 과거 고객 데이터에서 실제 이탈 고객을 80% 이상 발견하면서 "
+            "발견률과 적중률의 균형이 좋은 지점을 고려했습니다."
         )
 
-    if churn_proba >= 0.65:
+    # [Doo 작업] 고위험 기준도 config의 공통 상수로 분리했습니다.
+    if churn_proba >= HIGH_RISK_THRESHOLD:
         level, color, bg, action = (
             "🔴 고위험 고객", "#c0392b", "#fdecea",
             "전담 영업 담당자 즉시 연락, 맞춤 할인 오퍼 제공",

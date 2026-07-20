@@ -17,6 +17,16 @@ def render(model, preprocessor):
     snap = score_customers(load_customer_table(), model, preprocessor)
     snap = snap.sort_values("이탈확률", ascending=False).reset_index(drop=True)
     total_customers = len(snap)
+    threshold = st.session_state["applied_threshold"]
+
+    # [Doo 작업] 기존 상위 K% 방식과 함께, 캠페인 기준 설정 화면에서 확정한
+    # 적용값 이상 고객을 직접 선택할 수 있도록 타겟 선정 방식을 추가했습니다.
+    target_mode = st.radio(
+        "타겟 선정 방식",
+        ["이탈확률 상위 K%", f"캠페인 선정 기준 ({threshold:.0%}) 이상"],
+        horizontal=True,
+        key="roi_target_mode",
+    )
 
     col_a, col_b, col_c = st.columns(3)
     with col_a:
@@ -29,8 +39,17 @@ def render(model, preprocessor):
         success_rate = st.slider("✅ 캠페인 성공률", 0.0, 1.0, 0.3, 0.05, key="roi_success",
                                   help="캠페인을 받은 '진짜 이탈 위험' 고객 중 실제로 붙잡히는 비율 (가정값)")
 
-    n_targeted = max(1, int(total_customers * k_percent / 100))
-    targeted = snap.iloc[:n_targeted]
+    # [Doo 작업] 선택한 방식에 따라 동일한 고객 확률표에서 타겟을 계산합니다.
+    if target_mode == "이탈확률 상위 K%":
+        n_targeted = max(1, int(total_customers * k_percent / 100))
+        targeted = snap.iloc[:n_targeted]
+    else:
+        targeted = snap[snap["이탈확률"] >= threshold]
+        n_targeted = len(targeted)
+
+    if targeted.empty:
+        st.warning("현재 선정 기준 이상인 고객이 없습니다. 캠페인 선정 기준을 낮춰주세요.")
+        return
 
     # 라벨이 없는 미래 시점 예측이므로, 실제 이탈 수 대신 확률의 합(기댓값)을 사용
     expected_churners = targeted["이탈확률"].sum()
