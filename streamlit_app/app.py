@@ -29,7 +29,7 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-
+2
 model, preprocessor = load_model()
 
 st.markdown(
