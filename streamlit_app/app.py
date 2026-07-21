@@ -12,7 +12,6 @@ import streamlit as st
 from model_loader import load_model
 from config import DEFAULT_THRESHOLD
 from tabs import (
-    decile_analysis,
     Doo_threshold_settings,
     feature_importance,
     individual_prediction,
@@ -61,11 +60,11 @@ st.markdown(
 
 # [Doo 작업] st.tabs는 모든 탭의 코드를 한 번에 실행하므로, 메뉴 선택값에 따라
 # 하나의 화면만 조건부로 렌더링합니다. 다른 화면의 콘텐츠가 아래로 이어지지 않습니다.
+# [Doo 작업] CRM 운영 화면에 집중하기 위해 Decile/Lift 분석 메뉴를 제거했습니다.
 menu_items = [
     "캠페인 기준 설정",
     "위험고객 세분화",
     "개별 고객 예측",
-    "Decile/Lift 분석",
     "ROI 시뮬레이터",
     "Feature Importance",
 ]
@@ -85,8 +84,6 @@ elif selected_menu == "위험고객 세분화":
     risk_segments.render(model, preprocessor)
 elif selected_menu == "개별 고객 예측":
     individual_prediction.render(model, preprocessor)
-elif selected_menu == "Decile/Lift 분석":
-    decile_analysis.render(model, preprocessor)
 elif selected_menu == "ROI 시뮬레이터":
     roi_simulator.render(model, preprocessor)
 elif selected_menu == "Feature Importance":
