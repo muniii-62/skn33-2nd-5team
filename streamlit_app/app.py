@@ -37,7 +37,6 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-2
 model, preprocessor = load_model()
 
 # [Doo 작업] 선택값과 실제 적용값을 분리합니다.
