@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "artifact_type": "engineered_customer_input",
+  "description": "models/churn_pipeline.joblib에 전달되는 고객 집계 Feature 스키마. Pipeline 내부에서 로그 변환과 스케일링을 수행한다.",
+  "features": [
+    "recency_days",
+    "frequency",
+    "distinct_products",
+    "net_revenue",
+    "tenure_days",
+    "is_uk",
+    "avg_days_between_orders",
+    "has_return",
+    "recent_activity_ratio",
+    "is_low_value"
+  ],
+  "feature_count": 10,
+  "dtype": "float64",
+  "feature_groups": {
+    "pipeline_log_and_scaled": [
+      "net_revenue"
+    ],
+    "pipeline_scaled": [
+      "recency_days",
+      "frequency",
+      "distinct_products",
+      "tenure_days",
+      "avg_days_between_orders"
+    ],
+    "binary": [
+      "is_low_value",
+      "is_uk",
+      "has_return"
+    ],
+    "ratio_0_to_1": [
+      "recent_activity_ratio"
+    ]
+  },
+  "target": "churn",
+  "target_type": "binary",
+  "positive_class": 1,
+  "positive_class_definition": "기준일 이후 90일 동안 정상 재구매가 관측되지 않은 고객",
+  "negative_class": 0,
+  "negative_class_definition": "기준일 이후 90일 동안 정상 재구매가 관측된 고객",
+  "prediction_output": "churn probability from predict_proba(X)[:, 1]",
+  "operating_threshold": 0.38,
+  "threshold_rule": "Validation에서 Recall 0.85 이상인 Threshold 중 F1 최대",
+  "column_order_required": true,
+  "missing_values_allowed": false,
+  "preprocessor_path": "data/preprocessed/preprocessor.pkl",
+  "classifier_path": "models/final/model_final.joblib",
+  "model_path": "models/churn_pipeline.joblib"
+}
