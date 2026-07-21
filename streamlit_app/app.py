@@ -15,6 +15,7 @@ from customer_scoring import load_customer_table
 from tabs import (
     Doo_threshold_settings,
     individual_prediction,
+    recommended_threshold,
     risk_segments,
     roi_simulator,
 )
@@ -234,6 +235,7 @@ st.markdown(
 # 하나의 화면만 조건부로 렌더링합니다. 다른 화면의 콘텐츠가 아래로 이어지지 않습니다.
 # [Doo 작업] CRM 운영 화면에 집중하기 위해 Decile/Lift 분석 메뉴를 제거했습니다.
 menu_items = [
+    "권장 운영 기준",
     "캠페인 대상 선정",
     "고객 목록",
     "개별 고객 예측",
@@ -249,7 +251,9 @@ selected_menu = st.segmented_control(
 )
 st.divider()
 
-if selected_menu == "캠페인 대상 선정":
+if selected_menu == "권장 운영 기준":
+    recommended_threshold.render(model, preprocessor)
+elif selected_menu == "캠페인 대상 선정":
     Doo_threshold_settings.render(model)
     risk_segments.render_summary(model, preprocessor)
 elif selected_menu == "고객 목록":
