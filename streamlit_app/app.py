@@ -236,7 +236,6 @@ st.markdown(
 # [Doo 작업] CRM 운영 화면에 집중하기 위해 Decile/Lift 분석 메뉴를 제거했습니다.
 menu_items = [
     "권장 운영 기준",
-    "캠페인 대상 선정",
     "고객 목록",
     "개별 고객 예측",
     "ROI 시뮬레이터",
@@ -253,9 +252,6 @@ st.divider()
 
 if selected_menu == "권장 운영 기준":
     recommended_threshold.render(model, preprocessor)
-elif selected_menu == "캠페인 대상 선정":
-    Doo_threshold_settings.render(model)
-    risk_segments.render_summary(model, preprocessor)
 elif selected_menu == "고객 목록":
     risk_segments.render(model, preprocessor)
 elif selected_menu == "개별 고객 예측":
