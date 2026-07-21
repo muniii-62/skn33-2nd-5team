@@ -25,9 +25,9 @@ from customer_scoring import load_customer_table, score_customers
 
 
 SCENARIOS = {
-    "보수적": {"cost": 8.0, "success_rate": 0.10, "margin_rate": 0.25},
-    "기준": {"cost": 5.0, "success_rate": 0.20, "margin_rate": 0.35},
-    "낙관적": {"cost": 3.0, "success_rate": 0.30, "margin_rate": 0.45},
+    "보수적": {"cost": 8.0, "success_rate": 0.10, "margin_rate": 0.35},
+    "기준": {"cost": 5.0, "success_rate": 0.15, "margin_rate": 0.45},
+    "낙관적": {"cost": 3.0, "success_rate": 0.20, "margin_rate": 0.55},
 }
 
 SCENARIO_DESCRIPTIONS = {
@@ -37,6 +37,17 @@ SCENARIO_DESCRIPTIONS = {
 }
 
 PERIOD_OPTIONS = ["1개월", "3개월", "6개월", "12개월"]
+PERIOD_DAYS = {"1개월": 30, "3개월": 90, "6개월": 180, "12개월": 365}
+
+
+def _project_revenue_per_customer(targeted: pd.DataFrame, analysis_period: str) -> float:
+    """과거 고객별 일평균 순매출을 선택 기간으로 환산한 평균 유지 매출 참고값."""
+    if targeted.empty:
+        return 0.0
+    # 첫 구매 직후 고객의 하루 매출이 과도하게 연환산되지 않도록 최소 30일의 관찰 노출을 둔다.
+    exposure_days = (targeted["tenure_days"].astype(float) + 1.0).clip(lower=30.0)
+    daily_net_revenue = targeted["net_revenue"].clip(lower=0.0) / exposure_days
+    return float((daily_net_revenue * PERIOD_DAYS[analysis_period]).mean())
 
 
 def _apply_scenario(name: str, reference_revenue: float) -> None:
@@ -105,6 +116,14 @@ def _initialize_state(reference_revenue: float) -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+    previous_reference = st.session_state.get("roi_reference_revenue")
+    if previous_reference is not None and math.isclose(
+        float(st.session_state["roi_retained_revenue"]), float(previous_reference),
+        rel_tol=1e-6, abs_tol=1e-6,
+    ):
+        # 사용자가 참고값을 그대로 쓰는 동안에는 분석 기간·타겟 변경을 입력값에 반영한다.
+        st.session_state["roi_retained_revenue"] = float(max(reference_revenue, 0.0))
+    st.session_state["roi_reference_revenue"] = float(max(reference_revenue, 0.0))
     if "roi_active_scenario" not in st.session_state:
         current = {
             "cost": float(st.session_state["roi_cost"]),
@@ -410,7 +429,8 @@ def render(model, preprocessor):
         st.warning("현재 조건에 해당하는 고객이 없습니다. 타겟 범위 또는 캠페인 선정 기준을 조정해주세요.")
         return
 
-    reference_revenue = float(preliminary_target["net_revenue"].mean())
+    selected_period = st.session_state.get("roi_period", "3개월")
+    reference_revenue = _project_revenue_per_customer(preliminary_target, selected_period)
     _initialize_state(reference_revenue)
     st.session_state["roi_active_scenario"] = _scenario_name(
         float(st.session_state["roi_cost"]),
@@ -497,7 +517,7 @@ def render(model, preprocessor):
             with second_inputs[3]:
                 st.markdown("**현재 타겟 고객**")
                 st.markdown(f"**{len(preliminary_target):,}명**")
-                st.caption(f"과거 평균 순매출 £{reference_revenue:,.0f}")
+                st.caption(f"과거 일평균 순매출을 {analysis_period}로 환산: £{reference_revenue:,.0f}")
 
     with operations_column:
         with st.container(border=True):
@@ -729,6 +749,28 @@ def render(model, preprocessor):
 
             예산 한도는 기존 ROI 계산을 대체하지 않고 운영 가능 여부만 점검합니다.
             Threshold 방식에서는 예산 초과 경고만 제공하고 실제 적용 Threshold를 변경하지 않습니다.
+            """
+        )
+        st.markdown(
+            """
+            **기본 시나리오의 외부 참고 근거**
+
+            - 캠페인 비용 £3~£8은 쿠폰·발송·운영비를 포함하는 민감도 범위입니다. 영국 Royal Mail의
+              온라인 소형 소포 요금이 £3.95부터 시작한다는 점을 비용 규모의 참고선으로만 사용했습니다.
+            - 성공률 10~20%는 온라인 리테일 현장실험에서 관측된 약 10%p의 이탈 감소와 14.6%의
+              사이트 재방문 증가를 중심으로 설정한 탐색 범위이며, 이 프로젝트 기업의 실측 성공률은 아닙니다.
+            - 이익률 35~55%는 영국 온라인 카드·선물 기업 Moonpig/Greetz가 공시한 46.1~57.0%의
+              매출총이익률을 중심으로 보수적 할인폭을 둔 범위입니다.
+            - 유지 매출 참고값은 각 고객의 과거 순매출을 `max(첫 구매 후 경과일+1, 30일)`로 나눈 뒤,
+              선택한 30·90·180·365일로 환산한 고객 평균입니다.
+
+            외부 벤치마크는 업종·시기·캠페인 구조가 다르므로 초기 시뮬레이션 범위를 정하는 용도로만 사용하며,
+            실제 운영 후에는 A/B 테스트의 증분 이탈률·증분 이익으로 교체해야 합니다.
+
+            자료: [Royal Mail 현재 요금](https://www.royalmail.com/current-postage-prices) ·
+            [쿠폰과 이탈·CLV 현장실험](https://doi.org/10.1016/j.jretconser.2026.104798) ·
+            [리타겟 광고 현장실험](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=2852484) ·
+            [Moonpig Group FY2025 공시](https://www.moonpig.group/media/stvd50fh/moonpig-group-plc-annual-report-2025-cfo-review.pdf)
             """
         )
         st.markdown(

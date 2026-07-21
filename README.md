@@ -1,136 +1,240 @@
-# 이커머스 고객 이탈 예측 프로젝트(계속해서 수정 예정)
+# 이탈하지말아조 — 이커머스 고객 이탈 예측
 
-Online Retail II(UCI) 실거래 로그를 기반으로 고객 이탈을 예측한다.
+UCI **Online Retail II**의 영국 이커머스 실거래 로그를 고객 단위로 집계해,
+향후 90일 동안 재구매하지 않을 고객을 예측하는 프로젝트입니다. 예측 결과는
+Streamlit 대시보드에서 캠페인 대상 선정, 위험 고객 조회, 개별 예측 및 ROI
+시뮬레이션으로 연결합니다.
 
-## 실행 방법 (최초 1회, 터미널에 작성해주세요)
+## 프로젝트 요약
+
+| 항목 | 내용 |
+|---|---|
+| 원본 데이터 | Online Retail II, 2009-12-01~2011-12-09 |
+| 원본 규모 | 1,067,371개 거래 라인, 8개 컬럼 |
+| 분석 단위 | 고객 1명 = 1행 |
+| 기준일 | 2011-09-10 |
+| 분석 대상 | 기준일 이전 365일 내 구매 이력이 있는 활성 고객 |
+| Target | 기준일 이후 90일간 무구매 시 `churn=1` |
+| 최종 데이터 | 고객 4,320명, 10개 피처 |
+| 클래스 비율 | 이탈 49.4%, 잔류 50.6% |
+| 최종 모델 | XGBoost, 운영 Threshold 0.38 |
+| 핵심 평가 기준 | 이탈 고객을 놓치지 않기 위한 Recall 우선 |
+
+## 문제 정의
+
+원본 거래 로그에는 이탈 여부가 따로 기록되어 있지 않습니다. 따라서 특정 기준일을
+중심으로 과거 행동과 미래 재구매 여부를 분리했습니다.
+
+```text
+과거 거래 관찰 구간                  기준일                  결과 관찰 구간
+───────────────────────────────────  2011-09-10  ──────────────────────────
+피처 생성                                                향후 90일 재구매 확인
+
+최근 365일 내 구매 이력 있음 + 향후 90일 내 재구매 없음 → churn = 1
+최근 365일 내 구매 이력 있음 + 향후 90일 내 재구매 있음 → churn = 0
+```
+
+90일은 클래스 비율을 정확히 50:50으로 만들기 위한 수학적 최적값이 아니라, 재구매
+간격 분포, 캠페인 실행 가능 기간, 충분한 이탈 관찰 기간과 클래스 균형을 함께 고려한
+실무적 절충값입니다. 60~120일 민감도 분석에서도 기간이 길어질수록 이탈률은
+감소하지만 모델의 순위 판별력은 크게 변하지 않아, 90일을 유일한 정답이 아닌
+운영 기준으로 사용했습니다.
+
+## 원본 데이터 구성
+
+원본 CSV는 주문 한 건이 아니라 **주문에 포함된 상품 한 줄당 1행**으로 구성됩니다.
+동일한 `Invoice`가 여러 행에 반복될 수 있습니다.
+
+| 원본 컬럼 | 자료형 | 설명 | 분석 시 주의점 |
+|---|---|---|---|
+| `Invoice` | 문자열 | 주문·송장 번호 | `C`로 시작하면 취소 주문 |
+| `StockCode` | 문자열 | 상품 코드 | 상품 외 내부 기록 코드가 포함될 수 있음 |
+| `Description` | 문자열 | 상품 설명 | 4,382건 결측 |
+| `Quantity` | 정수 | 주문 수량 | 음수는 반품·취소 수량 |
+| `InvoiceDate` | 날짜·시간 | 주문 시각 | 로드 후 `datetime`으로 변환 |
+| `Price` | 실수 | 상품 1개당 가격(GBP) | 0 이하 값은 정상 판매에서 제외 |
+| `Customer ID` | 실수 | 익명 고객 번호 | 243,007건 결측, 로드 후 `CustomerID`로 변경 |
+| `Country` | 문자열 | 주문 국가 | 영국 여부 피처 생성에 사용 |
+
+예시:
+
+```text
+Invoice  StockCode  Description                         Quantity  InvoiceDate          Price  Customer ID  Country
+489434   85048      15CM CHRISTMAS GLASS BALL 20 LIGHTS 12        2009-12-01 07:45:00  6.95   13085        United Kingdom
+489434   79323P     PINK CHERRY LIGHTS                  12        2009-12-01 07:45:00  6.75   13085        United Kingdom
+```
+
+금액 단위는 원본 데이터에 맞춰 **파운드(GBP, £)**를 사용합니다. `Customer ID`는
+익명 숫자이지만, 이름·이메일 등 직접 식별정보는 포함되어 있지 않습니다.
+
+## 데이터 정제와 전처리
+
+### 정상 구매 데이터
+
+재구매 여부를 판정할 때는 다음 조건을 모두 만족하는 정상 구매만 사용합니다.
+
+- `Invoice`가 `C`로 시작하지 않음
+- `StockCode`가 상품 코드 형식에 해당함
+- `Quantity > 0`, `Price > 0`
+- `CustomerID`가 존재함
+
+정제 후 데이터는 802,632개 거래 라인, 5,852명 고객입니다. 단, 순매출과 반품
+관련 피처를 만들 때는 상품 라인의 취소·반품 기록도 포함해 구매와 상쇄합니다.
+
+### 데이터 생성 흐름
+
+```text
+원본 1,067,371행
+  ↓ 정상 구매·상품·회원 조건 적용
+정제 거래 802,632행
+  ↓ 기준일 이전 활성 고객 선별 및 고객 단위 집계
+고객 스냅샷 4,320행
+  ↓ 층화 분할(random_state=42)
+Train 2,592명 / Validation 864명 / Test 864명
+  ↓ Train으로만 전처리기와 is_low_value 기준 학습
+최종 10개 피처
+```
+
+- 분할 비율: Train 60% / Validation 20% / Test 20%
+- `is_low_value`: Train의 평균 주문금액 하위 20% 기준을 세 데이터에 동일 적용
+- `net_revenue`: 음수 0 클리핑 → `log1p` → `StandardScaler`
+- 연속형 피처: `StandardScaler`
+- 이진·비율 피처: 원값 유지
+
+## 최종 피처
+
+| 피처 | 설명 | 처리 |
+|---|---|---|
+| `net_revenue` | 취소·반품을 상쇄한 과거 순매출 | 0 클리핑 → log1p → 표준화 |
+| `recency_days` | 마지막 구매 후 기준일까지 경과일 | 표준화 |
+| `frequency` | 관찰 구간의 고유 주문 횟수 | 표준화 |
+| `distinct_products` | 구매한 고유 상품 종류 수 | 표준화 |
+| `tenure_days` | 첫 구매 후 기준일까지 경과일 | 표준화 |
+| `avg_days_between_orders` | 고객 활동 기간 ÷ 주문 횟수 | 표준화 |
+| `is_low_value` | 평균 주문금액이 Train 하위 20%인지 여부 | 이진값 |
+| `is_uk` | 주 이용 국가가 영국인지 여부 | 이진값 |
+| `has_return` | 취소·반품 경험 여부 | 이진값 |
+| `recent_activity_ratio` | 전체 주문 중 최근 90일 주문 비중 | 비율값 |
+
+`recency_days`와 `avg_days_between_orders`의 상관계수는 약 0.72입니다. 트리 모델은
+그대로 사용했지만, Logistic Regression 같은 선형모델에서는 다중공선성에 유의해야
+합니다. `return_ratio`와 연속형 `avg_order_value`는 신호와 중복성을 검토한 뒤 최종
+피처에서 제외했습니다.
+
+## 병렬 모델링과 모델 선택
+
+팀원들이 동일한 Train/Validation 데이터와 `random_state=42`를 사용해 여러 모델을
+병렬로 실험했습니다.
+
+| 담당 폴더 | 주요 모델·역할 |
+|---|---|
+| `models/ksj/` | Logistic Regression |
+| `models/kmk/` | Random Forest |
+| `models/lsy/` | Random Forest 및 파라미터 분석 |
+| `models/jhd/` | XGBoost, SVC, Soft Voting, 교차검증·튜닝 |
+| `models/hyn/` | LightGBM |
+| `models/final/` | 후보 비교, 최종 모델 및 Test 평가 |
+
+모델과 하이퍼파라미터는 Validation에서만 비교했고, Test는 최종 XGBoost와 Threshold
+0.38을 확정한 뒤 평가했습니다. Recall 0.80 이상인 후보 중 F1 균형을 함께 고려했습니다.
+
+## 최종 Test 결과
+
+| 모델 | Accuracy | Recall | Precision | F1 | ROC-AUC | PR-AUC |
+|---|---:|---:|---:|---:|---:|---:|
+| Logistic baseline, Threshold 0.50 | 0.683 | 0.691 | 0.675 | 0.683 | 0.754 | 0.726 |
+| XGBoost, Threshold 0.38 | 0.679 | **0.859** | 0.628 | **0.726** | 0.752 | 0.704 |
+
+최종 운영안은 Logistic baseline보다 Recall이 16.9%p, F1이 4.3%p 높았습니다.
+False Negative는 132명에서 60명으로 감소해 이탈 고객 72명을 추가로 탐지했으며,
+그 대가로 Precision과 PR-AUC 일부를 양보했습니다. 이는 이탈 고객을 놓치는 비용을
+오탐 캠페인 비용보다 크게 본 프로젝트 목적에 따른 선택입니다.
+
+## 실행 방법
+
+프로젝트 루트에서 실행합니다.
 
 ```bash
 pip install -r requirements.txt
-python -m src.data          # 원본 데이터 다운로드 (data/raw/)
-python -m src.prepare_data  # 전처리 완료 데이터 생성 (data/preprocessed/)
+
+# 최초 1회: 원본 다운로드 및 전처리 데이터 생성
+python -m src.data
+python -m src.prepare_data
+
+# Streamlit 대시보드 실행
+streamlit run streamlit_app/app.py
 ```
 
-## 모델 학습 시작하기
+`python -m src.data`는 로컬 CSV가 없을 때 KaggleHub의 `mashlyn/online-retail-ii-uci`
+미러를 내려받습니다. Kaggle 인증이 필요한 환경에서는 Kaggle 토큰 설정이 필요할 수
+있습니다. `data/`는 용량과 원본 데이터 관리 문제로 Git에 포함하지 않습니다.
 
-`models/example.ipynb`를 본인 노트북 맨 위 셀에 그대로 복사해서 붙여넣으면
-`X_train`, `y_train`, `X_val`, `y_val`이 바로 준비됩니다.
+모델 실험을 시작할 때는 `models/example.ipynb`의 로드 코드를 이용해 `X_train`,
+`y_train`, `X_val`, `y_val`을 준비합니다. `X_test`, `y_test`는 최종 평가용입니다.
 
-```python
-model.fit(X_train, y_train)
-pred = model.predict(X_val)
-```
+## Streamlit 대시보드
 
-## 규칙 (반드시 지켜주세요)
+최종 모델과 전처리기는 각각 `models/final/model_final.joblib`,
+`models/final/preprocessor_prototype.joblib`에서 불러옵니다.
 
-- **Val로 모델을 비교**하고 튜닝하세요. 여러 번 확인해도 괜찮습니다.
-- **Test는 절대 개인적으로 사용하지 마세요.** 팀 전체가 "이 모델로 최종 확정" 합의한 뒤,
-  단 한 번만 평가합니다. (`data/preprocessed/X_test.csv`, `y_test.csv`에 존재하지만
-  `example.ipynb`에서 의도적으로 불러오지 않습니다.)
-- **비교 기준은 Recall 우선**입니다 (이탈 고객을 놓치지 않는 것이 중요).
-  Precision, AUC도 함께 기록해 공유해주세요.
-- `random_state=42`는 전체 팀 공통 시드입니다. 임의로 바꾸지 마세요 (재현성 깨짐).
+- **캠페인 기준 설정**: 운영 Threshold 적용 및 오류 유형 확인
+- **위험고객 세분화**: 캠페인 대상 조회·필터·Excel/CSV 다운로드
+- **개별 고객 예측**: 고객 특성 입력에 따른 이탈확률 확인
+- **ROI 시뮬레이터**: 상위 K% 또는 Threshold 타겟의 비용·유지이익·ROI 분석
+- **Feature Importance**: 최종 XGBoost의 주요 예측 신호 확인
 
-## 데이터 요약
-
-- 원본: Online Retail II, 2009-12 ~ 2011-12, 영국 도매상 실거래 로그
-- 이탈 정의: 기준일(2011-09-10) 이전 365일 내 구매 이력 있는 활성 고객 대상,
-  기준일 이후 90일간 무구매 = 이탈
-- 최종 고객 수: 4,320명 (이탈률 49.4%)
-- 피처: 최종 10개 (아래 "최종 피처 세트" 표 참고)
-- 상세 근거는 `전처리_결과서.md`(작성 예정) 및 `notebooks/eda_log.ipynb`,
-  `notebooks/eda_customer.ipynb` 참고
-
-## 타깃 정의
-
-`churn` 컬럼: **1 = 이탈, 0 = 잔류(유지)**
-
-기준일(2011-09-10) 이전 365일 내 구매 이력이 있는 활성 고객 중,
-기준일 이후 90일간 재구매가 없으면 이탈(1)로 라벨링됨.
+ROI는 실제 성과를 보장하는 예측치가 아니라 비용, 캠페인 성공률, 매출총이익률과
+분석 기간을 조정하는 가정 기반 시뮬레이션입니다. 모든 금액은 GBP로 표시합니다.
 
 ## 폴더 구조
 
-```
-data/
-  raw/                         # 원본 데이터(자동 생성, Git 미포함)
-  preprocessed/                # 분할·전처리 데이터와 운영용 임계값(Git 미포함)
-notebooks/
-  eda_log.ipynb                # 거래 로그 EDA
-  eda_customer.ipynb           # 고객 단위 EDA
-  preprocessing.ipynb          # 전처리 검토
-  check.ipynb                  # 데이터 확인
-src/
-  data.py                      # 원본 다운로드 및 정제 데이터 로드
-  features.py                  # 고객 스냅샷(RFM+파생피처) 생성
-  transforms.py                # 전처리 변환 함수
-  prepare_data.py              # Train/Val/Test 분리 및 전처리
-models/
-  example.ipynb                # 팀원용 데이터 로드 예시
-  final/                       # Streamlit에서 사용하는 최종 모델·전처리기
-  hyn/, jhd/, kmk/, ksj/, lsy/ # 팀원별 모델 실험
-streamlit_app/
-  app.py                       # 대시보드 진입점
-  config.py                    # 모델 경로, 피처 순서와 표시명
-  model_loader.py              # 모델·전처리기 로드 및 호환성 검증
-  customer_scoring.py          # 운영 고객 스냅샷·점수 계산
-  tabs/                        # 세분화, 개별 예측, Lift, ROI, 중요도 화면
-프로젝트_진행정리.pdf           # 프로젝트 진행 정리
-한계_추후삭제예정.md            # 모델 한계 메모
+```text
+Project2/
+├─ data/                               # 로컬 데이터(.gitignore 적용)
+│  ├─ raw/online_retail_II.csv
+│  └─ preprocessed/                    # X/y 분할 데이터·전처리기·임계값
+├─ notebooks/                          # 거래·고객 EDA와 전처리 검토
+├─ src/                                # 다운로드, 피처 생성, 전처리 파이프라인
+├─ models/
+│  ├─ baseline_logistic.ipynb          # Logistic baseline
+│  ├─ example.ipynb                    # 공통 데이터 로드 예시
+│  ├─ hyn/, jhd/, kmk/, ksj/, lsy/     # 팀원별 병렬 모델 실험
+│  └─ final/                           # 최종 모델·전처리기·평가 노트북
+├─ streamlit_app/
+│  ├─ app.py                           # 대시보드 진입점
+│  ├─ config.py                        # 경로·Threshold·피처 설정
+│  ├─ model_loader.py                  # 모델·전처리기 검증 및 로드
+│  ├─ customer_scoring.py              # 현재 고객 스냅샷·점수 계산
+│  └─ tabs/                            # Threshold·세분화·예측·ROI·중요도
+├─ outputs/                            # 발표자료 등 최종 산출물
+├─ requirements.txt
+└─ README.md
 ```
 
-## 최종 피처 세트
+## 데이터 출처와 한계
 
-| 피처 | 설명 | 신호 강도 | 처리 |
-|---|---|---|---|
-| avg_days_between_orders | 평균 구매 간격(일) | 최강 (이탈률 21%→76%, 상관 0.37) | StandardScaler |
-| recency_days | 마지막 구매 후 경과일 | 강함 (24%→71%, 상관 0.35) | StandardScaler |
-| frequency | 관찰구간 내 구매 횟수 | 강함 (69%→16%, 상관 -0.25) | StandardScaler |
-| distinct_products | 구매한 상품 종류 수 | 강함 (69%→22%, 상관 -0.28) | StandardScaler |
-| recent_activity_ratio | 최근 90일 구매비중 | 강함 (63%→31%, 상관 -0.13) | 없음(비율, 0~1) |
-| is_low_value | 평균 주문금액 하위 20% 여부 | 강함 (44%→62%) | 없음(이진) |
-| has_return | 취소 경험 여부 | 중간 (60%→37%, **방향 반전**) | 없음(이진) |
-| **net_revenue** | 순매출(취소 상쇄) | 중간 (상관 -0.13), 파레토 구조 | **0 클리핑 → log1p(로그변환) → StandardScaler** |
-| tenure_days | 첫 구매 후 경과일 | 중간 (상관 -0.14), 비단조 | StandardScaler |
-| is_uk | UK 거주 여부 | 약함 (47%→50%) | 없음(이진) |
-
-**has_return 방향 반전**: 당초 "반품 많으면 불만족→이탈"을 가정했으나 실제로는 반대.
-반품은 거래가 지속되는 증거이며, 이미 이탈한 고객은 반품 기회 자체가 없음.
-
-**제외된 피처**: return_ratio(무신호, 상관 0.04), avg_order_value 연속형(무신호,
-is_low_value로 대체) — 근거는 `전처리_결과서.md`(작성 예정) 참고
-
-> 로그 변환은 net_revenue에만 적용됩니다. EDA(07)에서 이 피처만 소수 고객이
-> 매출 대부분을 차지하는 파레토 구조(평균≫중앙값)임을 확인했고, 나머지 피처는
-> 이런 치우침이 없어 스케일링만으로 충분합니다.
-
-
-## 주의사항: 다중공선성 (모델 선택 시 참고)
-
-`recency_days`와 `avg_days_between_orders`는 상관계수 **0.72**로 사실상 겹치는 정보입니다.
-
-- **트리 계열(XGBoost, RandomForest 등) 사용 시**: 신경 쓰지 않아도 됩니다. 10개 피처 그대로 사용하세요.
-- **로지스틱 회귀 등 선형 계열 사용 시**: 둘 중 하나만 사용하는 것을 권장합니다.
-  `recency_days`가 계산식이 더 단순(단일 지표)하고 해석이 쉬우므로 우선 권장하나,
-  `avg_days_between_orders`가 이탈과의 상관은 근소하게 더 높습니다(0.37 vs 0.35).
-  VIF를 직접 확인해 결정해도 좋습니다.
-
-상세 상관관계는 `notebooks/eda_customer.ipynb` 최종 히트맵 참고.
-
-## Data Card
-
-| 항목 | 작성 내용 |
+| 항목 | 내용 |
 |---|---|
-| 데이터 이름 | Online Retail II |
-| 출처 URL | UCI ML Repository (https://archive.ics.uci.edu/dataset/502/online+retail+ii), Kaggle 미러 `mashlyn/online-retail-ii-uci` |
-| 실제/합성 여부 | 실제 데이터 (영국 온라인 도매상 실거래 로그) |
+| 데이터 | UCI Online Retail II |
+| UCI URL | https://archive.ics.uci.edu/dataset/502/online+retail+ii |
 | 라이선스 | CC BY 4.0 |
-| 수집 기간 | 2009-12-01 ~ 2011-12-09 (약 2년) |
-| 행·열 수 | 원본 1,067,371행 × 8열 → 정제 후 802,632행 → 고객 스냅샷 4,320행 × 10피처 |
-| 분석 단위 | 고객 1명 = 1행 (원본은 거래 라인 단위, 09에서 고객 단위로 집계) |
-| Target | `churn` (1=이탈, 0=잔류) |
-| Target 생성 규칙 | 기준일(2011-09-10) 이전 365일 내 구매 이력 있는 활성 고객 대상, 기준일 이후 90일간 재구매 없으면 이탈(1). 윈도우(90일)는 재구매 간격 분포의 75~90% 지점에서 도출 |
-| 관찰 기간 | 데이터 시작 ~ 기준일(2011-09-10), 취소 포함 원본 기준 순매출 계산 |
-| 결과 기간 | 기준일 이후 90일 (정제된 실구매 데이터 기준 재구매 여부 판정) |
-| 주요 Feature | recency_days, frequency, distinct_products, net_revenue, tenure_days, avg_days_between_orders, has_return, recent_activity_ratio, is_uk, is_low_value (10개) |
-| 클래스 비율 | 이탈 49.4% / 잔류 50.6% (균형에 가까움, 별도 샘플링 불필요) |
-| 개인정보 포함 여부 | 없음 — CustomerID는 익명 숫자, 이름·이메일 등 식별정보 없음 |
-| 예상 위험 | 취소-구매 쌍 미상쇄 시 유령 매출 발생(순매출 계산으로 해결), CustomerID 결측 22.8%가 정상구매(비회원)인지 검증 필요(3중 검증 완료), 컬럼-값 순서 밀림·is_low_value 데이터 누수 등 파이프라인 버그(발견 및 수정 완료), recency_days-avg_days_between_orders 다중공선성(상관 0.72, 선형모델 사용 시 주의) |
+| 실제/합성 | 실제 영국 온라인 소매 거래 로그 |
+| 개인정보 | 익명 CustomerID 외 직접 식별정보 없음 |
+
+주요 한계는 다음과 같습니다.
+
+- 단일 영국 소매업체의 2009~2011년 데이터이므로 현재 시장에 바로 일반화하기 어려움
+- 계약 해지 기록이 없어 90일 무구매를 이탈의 대리변수로 사용
+- CustomerID 결측 거래는 고객 단위 분석에서 제외
+- 모델 확률이 별도의 확률 보정(calibration)을 거치지 않아 ROI의 기대인원 해석에 오차 가능
+- ROI 비용·성공률·이익률은 외부 참고값을 이용한 가정이며 실제 A/B 테스트로 교체 필요
+- Random 분할을 사용했으므로 실제 운영 전 시간순 검증과 데이터 드리프트 점검 필요
+
+## 참고 산출물
+
+- `notebooks/eda_log.ipynb`: 원본 거래 구조 및 정제 기준
+- `notebooks/eda_customer.ipynb`: 고객 피처와 이탈 관계
+- `models/final/model_comparison.ipynb`: Logistic baseline과 최종 모델 비교
+- `models/final/final_result.ipynb`: 최종 Test 평가 지표와 그래프
+- `프로젝트_진행정리.pdf`: 프로젝트 진행 과정 정리
+- `outputs/이탈하지말아조_고객이탈예측_발표자료.pptx`: 발표자료
