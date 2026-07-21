@@ -13,6 +13,10 @@ PREPROCESSOR_PATH = PROJECT_ROOT / "models" / "final" / "preprocessor_prototype.
 DEFAULT_THRESHOLD = 0.38
 HIGH_RISK_THRESHOLD = 0.65
 
+# [Doo 작업] 대시보드 헤더에 표시할 현재 평가 데이터 기준입니다.
+# 헤더 HTML에 문구를 직접 고정하지 않고 프로젝트 설정에서 관리합니다.
+EVALUATION_DATASET_NAME = "Validation"
+
 FEATURE_ORDER = [
     "net_revenue", "recency_days", "frequency", "distinct_products",
     "tenure_days", "avg_days_between_orders", "is_low_value", "is_uk",
