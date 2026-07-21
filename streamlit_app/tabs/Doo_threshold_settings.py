@@ -14,7 +14,7 @@
 
 [Doo 연동 수정 파일]
 - app.py: 상단 메뉴 조건부 렌더링 및 선택값·적용값 상태 초기화
-- config.py: 권장 기준 44%와 고위험 기준 공통 상수 정의
+- config.py: 최종 모델의 권장 기준과 고위험 기준 공통 상수 정의
 - individual_prediction.py: 실제 적용 기준을 개별 고객 판정에 반영
 - risk_segments.py: 실제 적용 기준으로 모델 위험군 필터링
 - roi_simulator.py: 실제 적용 기준 기반 캠페인 대상 선정 지원
@@ -301,7 +301,9 @@ def render(model):
     if "threshold_apply_success" not in st.session_state:
         st.session_state["threshold_apply_success"] = False
 
-    st.markdown("### 🎯 Doo — 캠페인 대상 선정 기준")
+    # [Doo 작업] 사용자용 화면에서는 작성자 표시를 제거하고 기능 중심 제목만 보여줍니다.
+    # 작업자 구분을 위한 Doo 표시는 파일명과 코드 내부 주석에 유지합니다.
+    st.markdown("### 🎯 캠페인 대상 선정 기준")
     st.markdown(
         "이탈 가능성이 몇 % 이상인 고객에게 캠페인을 진행할지 결정합니다.  \n"
         "적용한 기준은 위험고객 세분화, 개별 고객 예측, ROI 화면에 공통 적용됩니다."
@@ -381,7 +383,9 @@ def render(model):
         f"""
         <div style="background:#EAF3FF;border:1px solid #BBD7FF;border-radius:10px;
                     padding:16px 20px;margin:12px 0 20px 0;">
-            <div style="color:#1F6FCC;font-size:13px;font-weight:700;">권장 기준 44% · 균형 관리 전략</div>
+            <div style="color:#1F6FCC;font-size:13px;font-weight:700;">
+                권장 기준 {DEFAULT_THRESHOLD:.0%} · 균형 관리 전략
+            </div>
             <div style="font-size:16px;font-weight:700;margin:8px 0;">
                 이탈 고객 발견률 {recommended_metrics['recall']:.1%} &nbsp;·&nbsp;
                 선정 고객 적중률 {recommended_metrics['precision']:.1%} &nbsp;·&nbsp;
@@ -448,7 +452,7 @@ def render(model):
     with st.expander("선정 기준을 어떻게 정하면 좋을까요?"):
         st.markdown(
             "- **적극 관리(30%)**: 더 많은 이탈 고객을 발견하지만 캠페인 대상과 비용이 증가합니다.\n"
-            "- **균형 관리(44%, 권장)**: 이탈 고객 발견률과 선정 고객 적중률의 균형을 고려합니다.\n"
+            f"- **균형 관리({DEFAULT_THRESHOLD:.0%}, 권장)**: 이탈 고객 발견률과 선정 고객 적중률의 균형을 고려합니다.\n"
             "- **선별 관리(65%)**: 이탈 가능성이 높은 고객에게 집중해 캠페인 비용을 줄입니다.\n\n"
             "캠페인 비용이 낮거나 이탈 고객을 놓치는 손실이 크다면 적극 관리가 적합합니다. "
             "캠페인 비용이 높다면 선별 관리 결과와 ROI 화면을 함께 확인하세요."

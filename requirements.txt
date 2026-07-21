@@ -1,4 +1,6 @@
 ﻿pandas==3.0.3
+# [Doo 작업] 캠페인 대상 고객 목록을 서식이 적용된 Excel 파일로 생성합니다.
+openpyxl==3.1.5
 numpy==2.4.6
 scikit-learn==1.9.0
 xgboost==3.3.0
