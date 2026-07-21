@@ -421,12 +421,10 @@ def _render_download_group(
     )
 
 
-def render(model, preprocessor):
-    """[Doo 작업] 위험고객 세분화 CRM 운영 화면을 렌더링합니다."""
+def _prepare_scored_snapshot(model, preprocessor):
+    """공통 고객 점수와 CRM 파생 컬럼을 한 번에 준비합니다."""
     snap = score_customers(load_customer_table(), model, preprocessor)
     threshold = st.session_state["applied_threshold"]
-
-    # 기존 고객 유형과 이탈 확률 계산은 그대로 유지하고 UI용 파생값만 추가합니다.
     snap["고객유형"] = snap.apply(segment, axis=1)
     snap["모델판정"] = snap["이탈확률"].ge(threshold).map(
         {True: "캠페인 대상 고객", False: "일반 관찰 고객"}
@@ -437,6 +435,69 @@ def render(model, preprocessor):
     snap["우선순위"] = snap["이탈확률"].apply(lambda value: _priority_label(value, threshold))
     snap["고객유형필터"] = snap.apply(_customer_type_group, axis=1)
     snap["추천캠페인"] = snap["고객유형"].map(CAMPAIGN_BY_TYPE).fillna("일반 리텐션 캠페인")
+    return snap, threshold
+
+
+def render_summary(model, preprocessor):
+    """캠페인 기준 설정 직후 확인할 대상 규모와 고객 구성을 표시합니다."""
+    snap, threshold = _prepare_scored_snapshot(model, preprocessor)
+    campaign_target = snap[snap["이탈확률"] >= threshold]
+    high_risk = snap[snap["이탈확률"] >= 0.80]
+    selected_high_risk = campaign_target[campaign_target["이탈확률"] >= 0.80]
+
+    st.divider()
+    st.markdown("### 적용 결과 요약")
+    st.caption("위에서 적용한 캠페인 기준이 고객 선정 결과에 어떻게 반영되는지 확인합니다.")
+
+    first_kpi_row = st.columns(3)
+    _kpi_card(first_kpi_row[0], "전체 고객", f"{len(snap):,}명", "현재 고객 스냅샷 전체")
+    _kpi_card(
+        first_kpi_row[1], "캠페인 대상 고객", f"{len(campaign_target):,}명",
+        f"현재 적용 기준 {threshold:.0%} 이상",
+    )
+    _kpi_card(first_kpi_row[2], "고위험 고객", f"{len(high_risk):,}명", "이탈 확률 80% 이상")
+
+    second_kpi_row = st.columns(3)
+    first_purchase_count = int((snap["고객유형"] == "첫 구매 고객").sum())
+    long_cycle_count = int((snap["고객유형"] == "장기 구매 주기").sum())
+    average_target_probability = campaign_target["이탈확률"].mean() if not campaign_target.empty else 0
+    _kpi_card(second_kpi_row[0], "첫 구매 고객", f"{first_purchase_count:,}명", "구매 횟수 1회")
+    _kpi_card(second_kpi_row[1], "장기 구매 주기 고객", f"{long_cycle_count:,}명", "평균 구매 간격 90일 이상")
+    _kpi_card(
+        second_kpi_row[2], "대상 고객 평균 이탈 확률", f"{average_target_probability:.1%}",
+        "현재 캠페인 대상 고객 평균",
+    )
+
+    summary_left, summary_right = st.columns([1.15, 1], gap="large")
+    with summary_left:
+        st.markdown("#### 고객 선정 구성")
+        selection_summary = pd.DataFrame(
+            {
+                "고객 수": [
+                    len(selected_high_risk),
+                    len(campaign_target) - len(selected_high_risk),
+                    len(snap) - len(campaign_target),
+                ],
+            },
+            index=["고위험 고객", "일반 캠페인 대상", "관찰 고객"],
+        )
+        st.bar_chart(selection_summary, horizontal=True, color="#2F80ED")
+    with summary_right:
+        st.markdown("#### 다음 작업")
+        st.info(
+            "선정 규모가 적절하면 **고객 목록** 메뉴에서 대상 고객을 검색·필터링하고 "
+            "Excel 또는 CSV로 내려받으세요."
+        )
+        st.markdown(
+            f"- 현재 적용 기준: **{threshold:.0%}**\n"
+            f"- 캠페인 대상 비율: **{len(campaign_target) / len(snap):.1%}**\n"
+            f"- 고위험 고객 비율: **{len(high_risk) / len(snap):.1%}**"
+        )
+
+
+def render(model, preprocessor):
+    """검색·필터·테이블·상세·다운로드 중심의 고객 목록 화면을 렌더링합니다."""
+    snap, threshold = _prepare_scored_snapshot(model, preprocessor)
 
     if "selected_customer_id" not in st.session_state:
         st.session_state["selected_customer_id"] = None
@@ -448,10 +509,10 @@ def render(model, preprocessor):
     campaign_target = snap[snap["이탈확률"] >= threshold]
     high_risk = snap[snap["이탈확률"] >= 0.80]
 
-    st.markdown("### 🔎 위험고객 세분화")
+    st.markdown("### 고객 목록")
     st.markdown(
-        "현재 적용된 캠페인 기준 이상인 고객을 우선 관리 대상으로 분류합니다.  \n"
-        "고객의 위험도와 구매 패턴을 확인하고 적합한 리텐션 캠페인을 선택할 수 있습니다."
+        "첫 번째 메뉴에서 적용한 기준을 바탕으로 고객을 검색·필터링합니다.  \n"
+        "행을 선택하면 상세 정보와 추천 캠페인을 확인하고 실행용 목록을 내려받을 수 있습니다."
     )
     st.markdown(
         f"""
@@ -467,26 +528,7 @@ def render(model, preprocessor):
         unsafe_allow_html=True,
     )
 
-    # 1) CRM 핵심 KPI
-    first_kpi_row = st.columns(3)
-    _kpi_card(first_kpi_row[0], "전체 고객", f"{len(snap):,}명", "현재 고객 스냅샷 전체")
-    _kpi_card(
-        first_kpi_row[1], "캠페인 대상 고객", f"{len(campaign_target):,}명",
-        f"현재 적용 기준 {threshold:.0%} 이상",
-    )
-    _kpi_card(first_kpi_row[2], "고위험 고객", f"{len(high_risk):,}명", "이탈 확률 80% 이상")
-    second_kpi_row = st.columns(3)
-    first_purchase_count = int((snap["고객유형"] == "첫 구매 고객").sum())
-    long_cycle_count = int((snap["고객유형"] == "장기 구매 주기").sum())
-    average_target_probability = campaign_target["이탈확률"].mean() if not campaign_target.empty else 0
-    _kpi_card(second_kpi_row[0], "첫 구매 고객", f"{first_purchase_count:,}명", "구매 횟수 1회")
-    _kpi_card(second_kpi_row[1], "장기 구매 주기 고객", f"{long_cycle_count:,}명", "평균 구매 간격 90일 이상")
-    _kpi_card(
-        second_kpi_row[2], "대상 고객 평균 이탈 확률", f"{average_target_probability:.1%}",
-        "현재 캠페인 대상 고객 평균",
-    )
-
-    # 2) CustomerID 검색 — 필터보다 먼저 제공하고 검색 결과는 필터와 무관하게 선택합니다.
+    # CustomerID 검색 — 필터보다 먼저 제공하고 검색 결과는 필터와 무관하게 선택합니다.
     st.markdown("#### CustomerID 검색")
     search_column, clear_column = st.columns([5, 1])
     with search_column:
