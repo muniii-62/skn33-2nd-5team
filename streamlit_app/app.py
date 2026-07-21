@@ -14,7 +14,6 @@ from config import DEFAULT_THRESHOLD, EVALUATION_DATASET_NAME
 from customer_scoring import load_customer_table
 from tabs import (
     Doo_threshold_settings,
-    feature_importance,
     individual_prediction,
     risk_segments,
     roi_simulator,
@@ -239,7 +238,6 @@ menu_items = [
     "위험고객 세분화",
     "개별 고객 예측",
     "ROI 시뮬레이터",
-    "Feature Importance",
 ]
 selected_menu = st.segmented_control(
     "대시보드 메뉴",
@@ -259,5 +257,3 @@ elif selected_menu == "개별 고객 예측":
     individual_prediction.render(model, preprocessor)
 elif selected_menu == "ROI 시뮬레이터":
     roi_simulator.render(model, preprocessor)
-elif selected_menu == "Feature Importance":
-    feature_importance.render(model, preprocessor)
