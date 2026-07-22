@@ -101,7 +101,7 @@ Target은 원본에 존재하지 않으며 `src/features.py`의 `make_snapshot()
 
 | 변수 | 재구매 고객 `0` 평균 | 이탈 고객 `1` 평균 | 해석 |
 |---|---:|---:|---|
-| `recency_days` | 100.74 | 182.55 | 이탈 고객은 마지막 구매 후 경과일이 더 길다 |
+| `recency_days` | 100.74 | 182.55 | 이탈 고객은 최근 거래 활동 후 경과일이 더 길다 |
 | `frequency` | 11.55 | 4.19 | 이탈 고객의 구매 횟수가 적다 |
 | `distinct_products` | 115.79 | 53.00 | 이탈 고객의 상품 다양성이 낮다 |
 | `net_revenue` | 4,734.07 | 1,254.40 | 이탈 고객의 과거 순매출이 낮다 |
@@ -145,7 +145,7 @@ Target과의 절대 상관이 상대적으로 큰 변수는 `avg_days_between_or
 
 | 생성 Feature | 계산 방식 | 의미 |
 |---|---|---|
-| `recency_days` | 기준일 - 마지막 구매일 | 최근 구매 후 경과일 |
+| `recency_days` | 기준일 - 최근 거래 활동일 | 최근 거래 활동 후 경과일 |
 | `frequency` | 고유 Invoice 수 | 과거 구매 횟수 |
 | `distinct_products` | 고유 StockCode 수 | 구매 상품 다양성 |
 | `net_revenue` | `Quantity × Price` 합계 | 취소·반품을 차감한 순매출 |
