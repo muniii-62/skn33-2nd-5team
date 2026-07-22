@@ -4,7 +4,7 @@
 - 고객 선정 기준은 38%로 고정하고 비용·성공률·이익률 시나리오를 비교
 - 보수적·기준·낙관적 시나리오와 사용자 설정 상태 추가
 - 매출총이익률을 반영한 유지 이익·순이익·ROI 및 손익분기 지표 추가
-- K%별/Threshold별 순이익, 시나리오 비교, 성공률 민감도 분석 구현
+- K%별/Threshold별 순이익, 시나리오 비교, 성공률·유지 매출 민감도 분석 구현
 - 핵심 KPI 중심으로 화면을 압축하고 보조 분석은 접힌 영역으로 재배치
 - 캠페인 예산 한도와 K% 방식의 예산 내 자동 조정 기능 추가
 - 프리셋 자동 판별, 중복 시나리오 제거와 최대 순이익 지점 해석 강화
@@ -364,24 +364,81 @@ def _render_sensitivity(
     margin_rate: float,
     retained_revenue: float,
 ) -> None:
+    """성공률과 고객 가치의 조합별 순이익을 2차원 민감도 지도로 표시한다."""
+    # 현재 성공률과 손익분기 부근을 포함하되, 지나치게 넓어져 유의미한 구간이
+    # 뭉개지지 않도록 기본 분석 범위를 50%까지로 둔다.
+    current_metrics = _calculate_roi(
+        targeted, campaign_cost, current_success_rate, margin_rate, retained_revenue,
+    )
+    break_even_rate = current_metrics["break_even_success_rate"]
+    finite_break_even_rate = break_even_rate if math.isfinite(break_even_rate) else 0.0
+    max_success_rate = min(
+        1.0,
+        max(0.50, current_success_rate * 1.5, finite_break_even_rate * 1.25),
+    )
+    max_success_rate = math.ceil(max_success_rate / 0.05) * 0.05
+    success_rates = sorted({
+        *np.linspace(0.0, max_success_rate, 11).round(4).tolist(),
+        round(current_success_rate, 4),
+    })
+
+    revenue_anchor = max(retained_revenue, 1.0)
+    revenue_levels = sorted({
+        round(revenue_anchor * multiplier, 2)
+        for multiplier in (0.50, 0.75, 1.00, 1.25, 1.50)
+    } | {round(retained_revenue, 2)})
+
     rows = []
-    for success_rate in np.arange(0.0, 1.01, 0.05):
-        metrics = _calculate_roi(targeted, campaign_cost, success_rate, margin_rate, retained_revenue)
-        rows.append({"성공률": success_rate, "예상 순이익": metrics["net_profit"]})
+    for revenue_value in revenue_levels:
+        for success_rate in success_rates:
+            metrics = _calculate_roi(
+                targeted, campaign_cost, success_rate, margin_rate, revenue_value,
+            )
+            rows.append({
+                "성공률": success_rate,
+                "성공률 표시": f"{success_rate:.0%}",
+                "고객 1인당 유지 매출": revenue_value,
+                "유지 매출 표시": f"£{revenue_value:,.0f}",
+                "예상 순이익": metrics["net_profit"],
+                "예상 ROI": metrics["roi_pct"],
+                "현재 설정": (
+                    math.isclose(success_rate, current_success_rate, abs_tol=1e-6)
+                    and math.isclose(revenue_value, retained_revenue, abs_tol=0.01)
+                ),
+            })
     sensitivity_df = pd.DataFrame(rows)
-    line = alt.Chart(sensitivity_df).mark_line(color="#2F80ED", point=True).encode(
-        x=alt.X("성공률:Q", axis=alt.Axis(format="%")),
-        y=alt.Y("예상 순이익:Q", title="예상 순이익 (GBP)"),
+
+    success_order = [f"{value:.0%}" for value in success_rates]
+    revenue_order = [f"£{value:,.0f}" for value in reversed(revenue_levels)]
+    heatmap = alt.Chart(sensitivity_df).mark_rect(cornerRadius=2).encode(
+        x=alt.X(
+            "성공률 표시:O", title="이탈 방지 성공률", sort=success_order,
+            axis=alt.Axis(labelAngle=0),
+        ),
+        y=alt.Y(
+            "유지 매출 표시:O", title="고객 1인당 예상 유지 매출 (GBP)",
+            sort=revenue_order,
+        ),
+        color=alt.Color(
+            "예상 순이익:Q",
+            title="예상 순이익 (GBP)",
+            scale=alt.Scale(scheme="redyellowgreen", domainMid=0),
+        ),
         tooltip=[
             alt.Tooltip("성공률:Q", format=".0%"),
+            alt.Tooltip("고객 1인당 유지 매출:Q", format=",.0f"),
             alt.Tooltip("예상 순이익:Q", title="예상 순이익 (GBP)", format=",.0f"),
+            alt.Tooltip("예상 ROI:Q", title="예상 ROI (%)", format=".1f"),
         ],
     )
-    zero = alt.Chart(pd.DataFrame({"y": [0]})).mark_rule(color="#8A8F98").encode(y="y:Q")
-    current = alt.Chart(pd.DataFrame({"성공률": [current_success_rate]})).mark_rule(
-        color="#E56A00", strokeDash=[5, 4], size=2,
-    ).encode(x="성공률:Q")
-    st.altair_chart((line + zero + current).properties(height=300), width="stretch")
+    current = alt.Chart(sensitivity_df).transform_filter(
+        alt.datum["현재 설정"] == True
+    ).mark_rect(fillOpacity=0, stroke="#E56A00", strokeWidth=4, cornerRadius=2).encode(
+        x=alt.X("성공률 표시:O", sort=success_order),
+        y=alt.Y("유지 매출 표시:O", sort=revenue_order),
+    )
+    st.altair_chart((heatmap + current).properties(height=330), width="stretch")
+    st.caption("빨간색은 적자, 초록색은 흑자이며 주황색 테두리는 현재 입력값입니다.")
 
 
 def render(model, preprocessor):
@@ -653,7 +710,10 @@ def render(model, preprocessor):
         st.caption("● 표시는 현재 선택된 시나리오입니다. 프리셋과 같은 사용자 설정 행은 자동으로 숨깁니다.")
 
     with st.expander("가정 민감도 분석"):
-        st.markdown("다른 조건을 고정하고 이탈 방지 성공률만 변경했을 때의 예상 순이익입니다.")
+        st.markdown(
+            "캠페인 비용·매출총이익률·타겟 고객은 고정하고, 이탈 방지 성공률과 "
+            "고객 1인당 유지 매출을 함께 바꿨을 때의 예상 순이익입니다."
+        )
         _render_sensitivity(
             targeted, campaign_cost, success_rate, margin_rate, retained_revenue_per_customer,
         )
