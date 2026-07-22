@@ -11,7 +11,7 @@
     <td align="center"><img src="https://github.com/user-attachments/assets/c2a45d8f-7c50-4a59-bcc6-fe9b150302fc" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
   </tr>
   <tr>
-    <td align="center"><b>김문규 (kmk)</b></td>
+    <td align="center"><b>👑김문규 (kmk)</b></td>
     <td align="center"><b>이서영 (lsy)</b></td>
     <td align="center"><b>정현두 (jhd)</b></td>
     <td align="center"><b>권세진 (ksj)</b></td>
