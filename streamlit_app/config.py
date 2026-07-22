@@ -22,7 +22,7 @@ FEATURE_ORDER = [
 
 FEATURE_LABELS = {
     "net_revenue": "순매출",
-    "recency_days": "최근 구매 후 경과일",
+    "recency_days": "최근 거래 활동 후 경과일",
     "frequency": "구매 횟수",
     "distinct_products": "구매 상품 종류 수",
     "tenure_days": "첫 구매 후 경과일",

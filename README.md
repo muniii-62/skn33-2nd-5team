@@ -139,7 +139,7 @@ Train 2,592명 / Validation 864명 / Test 864명
 | 피처 | 설명 | 처리 |
 |---|---|---|
 | `net_revenue` | 취소·반품을 상쇄한 과거 순매출 | 0 클리핑 → log1p → 표준화 |
-| `recency_days` | 마지막 구매 후 기준일까지 경과일 | 표준화 |
+| `recency_days` | 최근 거래 활동일 후 기준일까지 경과일 | 표준화 |
 | `frequency` | 관찰 구간의 고유 주문 횟수 | 표준화 |
 | `distinct_products` | 구매한 고유 상품 종류 수 | 표준화 |
 | `tenure_days` | 첫 구매 후 기준일까지 경과일 | 표준화 |
