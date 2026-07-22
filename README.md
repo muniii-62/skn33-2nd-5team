@@ -188,21 +188,21 @@ streamlit run streamlit_app/app.py
 
 ## Streamlit 대시보드
 
-현재 Streamlit은 최종 모델과 전처리기를 각각 `models/final/model_final.joblib`,
-`models/final/preprocessor_prototype.joblib`에서 불러옵니다. 제출·독립 예측용 단일
-Pipeline은 `models/churn_pipeline.joblib`에 저장되어 있습니다.
+현재 Streamlit은 제출·독립 예측용 단일 Pipeline인
+`models/churn_pipeline.joblib`을 직접 불러옵니다. Pipeline 내부의 동일한 전처리기와
+XGBoost 분류기를 고객 목록·개별 예측·ROI에서 공통으로 사용합니다.
 
-대시보드는 현재 다음 5개 메뉴로 구성됩니다.
+대시보드는 다음 5개 메뉴로 구성됩니다.
 
-- **권장 운영 기준**: Validation에서 선정한 38% 기준의 예상 성능을 먼저 확인하고, 필요하면 다른 기준을 미리보기·적용
-- **캠페인 대상 선정**: 30%·38%·65% 프리셋 또는 직접 선택한 Threshold의 Recall·Precision·대상 규모 확인
-- **고객 목록**: 캠페인 대상 고객 조회·검색·필터링, 고객 상세 확인 및 Excel/CSV 다운로드
-- **개별 고객 예측**: 고객 행동 정보를 입력해 이탈 확률과 권장 관리 방향 확인
-- **ROI 시뮬레이터**: 상위 K% 또는 현재 적용 Threshold 대상의 비용·유지이익·순이익·ROI 비교
+- **데이터 분석 및 모델 성능**: Target 분포와 핵심 EDA, 모델별 Validation 비교, 최종 Test 성능·오류 분석 확인
+- **캠페인 대상 선정**: 38% 선정 근거와 Validation 예상 성능, 현재 고객 대상 규모를 확인하고 다른 Threshold의 민감도를 참고용으로 비교
+- **고객 현황 및 목록**: 캠페인 대상 고객 조회·검색·필터링, 고객 상세 확인 및 Excel/CSV 다운로드
+- **개별 고객 예측**: 고객 행동 정보를 입력해 38% 기준 이탈 판정과 권장 관리 방향 확인
+- **ROI 시뮬레이터**: 38% 이상 캠페인 대상의 비용·유지이익·순이익·ROI 비교
 
-38%는 Validation에서 정한 권장 기본값입니다. 현재 앱에서는 운영 인력과 예산 제약을
-비교할 수 있도록 다른 Threshold도 선택해 전체 화면에 적용할 수 있습니다. 적용한 값은
-고객 목록, 개별 예측, ROI 화면에서 공통으로 사용됩니다.
+38%는 Validation에서 정한 최종 운영 기준입니다. 첫 화면의 비교 슬라이더는
+Validation 예상 결과만 바꾸며, 고객 목록·개별 예측·ROI에는 항상 38%가 적용됩니다.
+개별 예측의 평균 구매 간격, 평균 주문금액과 저가치 여부는 기본 입력값에서 자동 계산됩니다.
 
 ROI는 실제 성과를 보장하는 예측치가 아니라 비용, 캠페인 성공률, 매출총이익률과
 분석 기간을 조정하는 가정 기반 시뮬레이션입니다. 모든 금액은 GBP로 표시합니다.
@@ -242,7 +242,7 @@ Project2/
 │  ├─ config.py                        # 경로·Threshold·피처 설정
 │  ├─ model_loader.py                  # 모델·전처리기 검증 및 로드
 │  ├─ customer_scoring.py              # 현재 고객 스냅샷·점수 계산
-│  └─ tabs/                            # 권장 기준·대상 선정·고객 목록·예측·ROI
+│  └─ tabs/                            # 대상 선정·고객 목록·개별 예측·ROI
 ├─ outputs/                            # 발표자료 등 최종 산출물
 ├─ requirements.txt
 └─ README.md

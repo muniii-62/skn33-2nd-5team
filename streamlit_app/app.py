@@ -13,7 +13,7 @@ from model_loader import load_model
 from config import DEFAULT_THRESHOLD, EVALUATION_DATASET_NAME
 from customer_scoring import load_customer_table
 from tabs import (
-    Doo_threshold_settings,
+    analysis_performance,
     individual_prediction,
     recommended_threshold,
     risk_segments,
@@ -194,13 +194,8 @@ st.markdown(
 )
 model, preprocessor = load_model()
 
-# [Doo 작업] 선택값과 실제 적용값을 분리합니다.
-# 다른 화면은 `applied_threshold`만 사용하므로 슬라이더를 움직이는 것만으로는
-# 위험고객·개별 예측·ROI 결과가 바뀌지 않습니다.
-if "applied_threshold" not in st.session_state:
-    st.session_state["applied_threshold"] = DEFAULT_THRESHOLD
-if "draft_threshold" not in st.session_state:
-    st.session_state["draft_threshold"] = st.session_state["applied_threshold"]
+# 첫 화면의 Threshold 조정은 민감도 비교용이며 실제 운영 화면은 38%로 고정합니다.
+st.session_state["applied_threshold"] = DEFAULT_THRESHOLD
 
 # [Doo 작업] 실제 모델·고객 데이터·적용 Threshold를 사용해 CRM 헤더 상태를 표시합니다.
 # 숫자를 HTML에 고정하지 않아 데이터나 운영 기준이 바뀌면 헤더도 함께 갱신됩니다.
@@ -216,8 +211,8 @@ st.markdown(
         <div class="doo-crm-identity">
             <div class="doo-crm-icon" aria-hidden="true">🛒</div>
             <div class="doo-crm-copy">
-                <h1 class="doo-crm-title">이커머스 고객 이탈 예측</h1>
-                <p class="doo-crm-subtitle">XGBoost 기반 이탈 예측과 CRM 캠페인 의사결정 대시보드</p>
+                <h1 class="doo-crm-title">이커머스 구매 고객 재구매 이탈 예측</h1>
+                <p class="doo-crm-subtitle">XGBoost 기반 장기 미구매 위험 예측과 CRM 캠페인 의사결정 대시보드</p>
             </div>
         </div>
         <div class="doo-crm-status" aria-label="현재 대시보드 상태">
@@ -235,9 +230,9 @@ st.markdown(
 # 하나의 화면만 조건부로 렌더링합니다. 다른 화면의 콘텐츠가 아래로 이어지지 않습니다.
 # [Doo 작업] CRM 운영 화면에 집중하기 위해 Decile/Lift 분석 메뉴를 제거했습니다.
 menu_items = [
-    "권장 운영 기준",
+    "데이터 분석 및 모델 성능",
     "캠페인 대상 선정",
-    "고객 목록",
+    "고객 현황 및 목록",
     "개별 고객 예측",
     "ROI 시뮬레이터",
 ]
@@ -251,12 +246,11 @@ selected_menu = st.segmented_control(
 )
 st.divider()
 
-if selected_menu == "권장 운영 기준":
-    recommended_threshold.render(model, preprocessor)
+if selected_menu == "데이터 분석 및 모델 성능":
+    analysis_performance.render()
 elif selected_menu == "캠페인 대상 선정":
-    Doo_threshold_settings.render(model)
-    risk_segments.render_summary(model, preprocessor)
-elif selected_menu == "고객 목록":
+    recommended_threshold.render(model, preprocessor)
+elif selected_menu == "고객 현황 및 목록":
     risk_segments.render(model, preprocessor)
 elif selected_menu == "개별 고객 예측":
     individual_prediction.render(model, preprocessor)

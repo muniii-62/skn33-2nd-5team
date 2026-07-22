@@ -1,7 +1,7 @@
-"""마케팅·CRM 담당자를 위한 캠페인 ROI 시뮬레이터.
+"""최종 운영 기준 38% 캠페인 대상을 위한 ROI 시뮬레이터.
 
 [Doo 작업]
-- 상위 K%와 적용 Threshold 방식을 완전히 분리해 서로 다른 결과가 섞이지 않도록 개선
+- 고객 선정 기준은 38%로 고정하고 비용·성공률·이익률 시나리오를 비교
 - 보수적·기준·낙관적 시나리오와 사용자 설정 상태 추가
 - 매출총이익률을 반영한 유지 이익·순이익·ROI 및 손익분기 지표 추가
 - K%별/Threshold별 순이익, 시나리오 비교, 성공률 민감도 분석 구현
@@ -22,6 +22,7 @@ import pandas as pd
 import streamlit as st
 
 from customer_scoring import load_customer_table, score_customers
+from config import DEFAULT_THRESHOLD
 
 
 SCENARIOS = {
@@ -394,39 +395,19 @@ def render(model, preprocessor):
 
     scored_customers = score_customers(load_customer_table(), model, preprocessor)
     scored_customers = scored_customers.sort_values("이탈확률", ascending=False).reset_index(drop=True)
-    applied_threshold = st.session_state["applied_threshold"]
-    if "roi_k" not in st.session_state:
-        st.session_state["roi_k"] = 20
+    applied_threshold = DEFAULT_THRESHOLD
 
-    st.markdown("#### 1. 타겟 선정 방식")
-    target_mode = st.radio(
-        "타겟 선정 방식",
-        ["이탈 확률 상위 K%", "현재 캠페인 선정 기준 이상"],
-        horizontal=True,
-        key="roi_target_mode",
-        label_visibility="collapsed",
-    )
-    if target_mode == "이탈 확률 상위 K%":
-        k_percent = st.slider(
-            "이탈 위험도가 높은 고객 몇 %에게 캠페인을 보낼까요?",
-            min_value=5,
-            max_value=100,
-            step=5,
-            key="roi_k",
-            help="전체 고객을 이탈 확률이 높은 순으로 정렬한 뒤 선택하는 비율입니다.",
-        )
-        preliminary_target = _select_target(scored_customers, target_mode, k_percent, applied_threshold)
-        st.caption(f"상위 {k_percent}% · 현재 타겟 {len(preliminary_target):,}명")
-    else:
-        k_percent = int(st.session_state.get("roi_k", 20))
-        preliminary_target = _select_target(scored_customers, target_mode, k_percent, applied_threshold)
-        threshold_columns = st.columns(2)
-        threshold_columns[0].metric("실제 적용 Threshold", f"{applied_threshold:.0%}")
-        threshold_columns[1].metric("Threshold 이상 고객", f"{len(preliminary_target):,}명")
-        st.caption("캠페인 기준 설정 화면에서 확정한 실제 적용값을 사용합니다.")
+    st.markdown("#### 1. 캠페인 대상")
+    target_mode = "현재 캠페인 선정 기준 이상"
+    k_percent = 0
+    preliminary_target = _select_target(scored_customers, target_mode, k_percent, applied_threshold)
+    threshold_columns = st.columns(2)
+    threshold_columns[0].metric("최종 운영 기준", f"{applied_threshold:.0%}")
+    threshold_columns[1].metric("캠페인 대상 고객", f"{len(preliminary_target):,}명")
+    st.caption("ROI는 다른 Threshold나 상위 K%를 적용하지 않고 최종 운영 기준 38% 이상 고객으로 계산합니다.")
 
     if preliminary_target.empty:
-        st.warning("현재 조건에 해당하는 고객이 없습니다. 타겟 범위 또는 캠페인 선정 기준을 조정해주세요.")
+        st.warning("최종 운영 기준에 해당하는 고객이 없어 ROI를 계산할 수 없습니다.")
         return
 
     selected_period = st.session_state.get("roi_period", "3개월")
@@ -536,7 +517,7 @@ def render(model, preprocessor):
             st.caption(f"입력 유지 매출: £{retained_revenue_per_customer:,.0f} · {analysis_period}")
 
     if campaign_cost < 0 or not 0 <= success_rate <= 1 or not 0 <= margin_rate <= 1 or retained_revenue_per_customer < 0:
-        st.error("비용·유지 매출은 0 이상, 성공률·이익률은 0~100%여야 합니다.")
+        st.error("비용·유지 매출은 0 이상, 성공률·이익률은 0%에서 100% 사이여야 합니다.")
         return
 
     targeted = _select_target(scored_customers, target_mode, k_percent, applied_threshold)
@@ -567,18 +548,7 @@ def render(model, preprocessor):
                 "현재 선택한 타겟 고객 수가 캠페인 예산을 초과합니다. "
                 f"예산 내에서 발송 가능한 최대 고객은 {max_sendable:,}명입니다."
             )
-            if target_mode == "이탈 확률 상위 K%":
-                raw_budget_k = max_sendable / len(scored_customers) * 100
-                budget_k = min(100, int(raw_budget_k // 5) * 5)
-                if budget_k >= 5:
-                    st.button(
-                        f"예산에 맞게 타겟 자동 조정 (상위 {budget_k}%)",
-                        on_click=_set_budget_k, args=(budget_k,), type="primary",
-                    )
-                else:
-                    st.caption("현재 예산으로는 최소 선택 단위인 상위 5% 고객에게도 발송하기 어렵습니다.")
-            else:
-                st.caption("Threshold 방식에서는 경고만 표시하며 실제 적용 Threshold를 자동 변경하지 않습니다.")
+            st.caption("예산이 부족해도 최종 운영 기준 38%는 자동으로 변경하지 않습니다.")
 
     st.markdown("#### 4. 핵심 KPI")
     first_kpis = st.columns(3)
@@ -649,52 +619,6 @@ def render(model, preprocessor):
     if metrics["roi_pct"] is not None and metrics["roi_pct"] >= 500:
         st.warning("높은 고객 가치 또는 성공률 가정의 영향을 크게 받고 있습니다. 실제 캠페인 자료로 가정을 점검해주세요.")
 
-    st.markdown("#### 6. 순이익 변화 그래프")
-    if target_mode == "이탈 확률 상위 K%":
-        sweep_df = _build_k_sweep(
-            scored_customers, campaign_cost, success_rate, margin_rate, retained_revenue_per_customer,
-        )
-        chart, best_row = _profit_chart(sweep_df, "상위 K%", k_percent, "이탈 위험 상위 K%")
-        st.altair_chart(chart, width="stretch")
-        best_k = int(best_row["상위 K%"])
-        st.caption("파란색 원은 현재 선택 K%, 주황색 마름모는 현재 가정에서 최대 예상 순이익 K%입니다.")
-        with st.container(border=True):
-            if k_percent != best_k:
-                st.markdown(
-                    f"현재 선택 범위는 **상위 {k_percent}%**이며, 현재 가정값 기준 최대 예상 순이익은 "
-                    f"**상위 {best_k}%**에서 발생합니다."
-                )
-            else:
-                st.markdown(f"현재 선택 범위 **상위 {k_percent}%**가 현재 가정의 최대 예상 순이익 지점입니다.")
-            st.caption("최대 순이익 지점은 현재 입력 가정의 참고값이며 최종 캠페인 권장 범위를 의미하지 않습니다.")
-        monotonic_increase = bool((sweep_df["예상 순이익"].diff().dropna() >= -1e-9).all())
-        if monotonic_increase:
-            st.info(
-                "현재 가정에서는 추가 고객의 기대 유지 이익이 캠페인 비용보다 높아 타겟 범위를 넓힐수록 "
-                "예상 순이익이 증가합니다. 실제 운영에서는 총예산, 발송 가능 인원, 쿠폰 비용, 고객 피로도와 "
-                "채널별 발송 한도를 함께 고려해야 합니다."
-            )
-        if best_k in {90, 95, 100}:
-            st.warning(
-                "최대 순이익이 분석 범위의 끝에서 발생했습니다. "
-                "현재 가정에서는 캠페인 범위 확대에 따른 효율 감소가 반영되지 않았을 수 있습니다."
-            )
-    else:
-        sweep_df = _build_threshold_sweep(
-            scored_customers, applied_threshold, campaign_cost, success_rate,
-            margin_rate, retained_revenue_per_customer,
-        )
-        chart, best_row = _profit_chart(sweep_df, "Threshold", applied_threshold, "캠페인 선정 Threshold")
-        st.altair_chart(chart, width="stretch")
-        best_threshold = float(best_row["Threshold"])
-        st.caption("파란색 원은 실제 적용 Threshold, 주황색 마름모는 현재 가정의 최대 예상 순이익 Threshold입니다.")
-        with st.container(border=True):
-            st.markdown(
-                f"현재 적용 기준 **{applied_threshold:.0%}** · 최대 예상 순이익 기준 "
-                f"**{best_threshold:.0%}** · 최대 예상 순이익 **£{best_row['예상 순이익']:,.0f}**"
-            )
-            st.caption("캠페인 기준 설정 화면의 실제 적용 Threshold는 이 화면에서 변경하지 않습니다.")
-
     with st.expander("시나리오별 결과 비교"):
         st.markdown("동일한 타겟 고객을 기준으로 비용, 성공률과 이익률 가정에 따른 결과를 비교합니다.")
         current_values = {
@@ -755,11 +679,11 @@ def render(model, preprocessor):
             """
             **기본 시나리오의 외부 참고 근거**
 
-            - 캠페인 비용 £3~£8은 쿠폰·발송·운영비를 포함하는 민감도 범위입니다. 영국 Royal Mail의
+            - 캠페인 비용 £3–£8은 쿠폰·발송·운영비를 포함하는 민감도 범위입니다. 영국 Royal Mail의
               온라인 소형 소포 요금이 £3.95부터 시작한다는 점을 비용 규모의 참고선으로만 사용했습니다.
-            - 성공률 10~20%는 온라인 리테일 현장실험에서 관측된 약 10%p의 이탈 감소와 14.6%의
+            - 성공률 10–20%는 온라인 리테일 현장실험에서 관측된 약 10%p의 이탈 감소와 14.6%의
               사이트 재방문 증가를 중심으로 설정한 탐색 범위이며, 이 프로젝트 기업의 실측 성공률은 아닙니다.
-            - 이익률 35~55%는 영국 온라인 카드·선물 기업 Moonpig/Greetz가 공시한 46.1~57.0%의
+            - 이익률 35–55%는 영국 온라인 카드·선물 기업 Moonpig/Greetz가 공시한 46.1–57.0%의
               매출총이익률을 중심으로 보수적 할인폭을 둔 범위입니다.
             - 유지 매출 참고값은 각 고객의 과거 순매출을 `max(첫 구매 후 경과일+1, 30일)`로 나눈 뒤,
               선택한 30·90·180·365일로 환산한 고객 평균입니다.

@@ -18,6 +18,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from customer_scoring import load_customer_table, score_customers, segment
+from config import DEFAULT_THRESHOLD
 
 
 BADGE_BY_TYPE = {
@@ -35,8 +36,6 @@ CAMPAIGN_BY_TYPE = {
 }
 
 PRIORITY_COLORS = {
-    "긴급": ("#FDECEC", "#C62828", "🔴"),
-    "높음": ("#FFF3E0", "#E56A00", "🟠"),
     "관리": ("#EAF3FF", "#1F6FCC", "🔵"),
     "관찰": ("#F2F4F7", "#667085", "⚪"),
 }
@@ -46,10 +45,6 @@ def _priority_label(probability: float, threshold: float) -> str:
     """[Doo 작업] 적용 기준과 확률을 함께 사용해 CRM 우선순위를 정합니다."""
     if probability < threshold:
         return "관찰"
-    if probability >= 0.80:
-        return "긴급"
-    if probability >= 0.60:
-        return "높음"
     return "관리"
 
 
@@ -72,42 +67,83 @@ def _campaign_plan(customer: pd.Series) -> dict:
     if customer_type == "이탈 위험 높음":
         return {
             "name": "개인화 리텐션 쿠폰",
+            "target": "2회 이상 구매했고, 평균 구매 간격은 90일 미만이지만 마지막 구매 후 90일 이상 지난 고객",
             "reason": f"평소 구매 주기를 초과했고 현재 이탈 확률이 {probability:.1%}입니다.",
             "actions": [
                 "7일 이내 사용 가능한 개인화 쿠폰 발송",
                 "이전 구매 상품과 연관된 상품 추천",
                 "이메일 또는 앱 푸시로 우선 안내",
             ],
+            "effect": "빠른 재방문과 재구매를 유도해 단기 이탈을 방지합니다.",
+            "caution": "고객별 구매 이력과 마진을 확인해 쿠폰 할인율과 발송 빈도를 조정합니다.",
         }
     if customer_type == "첫 구매 고객":
         return {
             "name": "웰컴 캠페인",
+            "target": "현재까지 구매 횟수가 1회인 고객",
             "reason": f"첫 구매 이후 추가 구매가 확인되지 않았고 현재 이탈 확률이 {probability:.1%}입니다.",
             "actions": [
                 "첫 구매 고객 전용 재구매 쿠폰 제공",
                 "첫 구매 상품과 연관된 상품 추천",
                 "한 달 이내 리텐션 메시지 예약",
             ],
+            "effect": "두 번째 구매 장벽을 낮춰 신규 고객을 반복 구매 고객으로 전환합니다.",
+            "caution": "첫 구매 직후에는 과도한 메시지를 피하고 상품 배송·사용 시점을 고려합니다.",
         }
     if customer_type == "장기 구매 주기":
         return {
             "name": "구매 주기 리마인드",
+            "target": "2회 이상 구매했고 평균 구매 간격이 90일 이상인 장기 주기 고객",
             "reason": "평균 구매 간격이 긴 고객이므로 기존 구매 주기에 맞춘 접근이 적합합니다.",
             "actions": [
-                "예상 재구매 시점에 맞춰 리마인드 발송",
+                "고객의 과거 구매 주기를 참고해 적절한 시점에 상품 재구매 안내 발송",
                 "과도한 조기 할인 발송은 제외",
                 "관심 상품 재입고 또는 추천 상품 안내",
             ],
+            "effect": "고객 고유의 구매 시점에 맞춰 자연스러운 재구매를 유도합니다.",
+            "caution": "구매 주기가 긴 고객을 단순 휴면으로 판단해 너무 이른 할인 메시지를 보내지 않습니다.",
         }
     return {
         "name": "일반 리텐션 캠페인",
+        "target": "위 세 유형에 해당하지 않는 2회 이상 구매 고객",
         "reason": f"거래 패턴과 현재 이탈 확률 {probability:.1%}를 함께 고려한 관리가 필요합니다.",
         "actions": [
             "일반 리텐션 메시지 발송",
             "최근 구매 상품 기반 추천 제공",
             "캠페인 반응 여부를 확인해 후속 조치 결정",
         ],
+        "effect": "관계를 유지하면서 관심 상품의 추가 구매 가능성을 높입니다.",
+        "caution": "일괄 할인보다 최근 구매 상품과 캠페인 반응을 활용해 개인화 수준을 높입니다.",
     }
+
+
+def _render_campaign_guide():
+    """고객 유형별 추천 캠페인의 대상과 실행 목적을 한눈에 설명합니다."""
+    with st.expander("추천 캠페인 4종 자세히 보기"):
+        st.caption(
+            "추천 캠페인은 모델이 새로 분류한 결과가 아니라 고객의 구매 횟수와 구매 주기를 이용한 "
+            "룰 기반 실행 제안입니다. 이탈 확률 38% 이상 여부는 캠페인 대상 선정에 별도로 사용합니다."
+        )
+        guide_rows = [
+            ("웰컴 캠페인", "구매 1회", "두 번째 구매 쿠폰·연관 상품 안내", "첫 재구매 전환"),
+            ("개인화 리텐션 쿠폰", "평균 구매 간격 90일 미만, 최근 구매 후 90일 이상", "개인화 쿠폰·우선 메시지", "단기 이탈 방지"),
+            ("구매 주기 리마인드", "평균 구매 간격 90일 이상", "과거 구매 주기에 맞춘 상품 안내", "자연스러운 재구매 유도"),
+            ("일반 리텐션 캠페인", "나머지 반복 구매 고객", "최근 구매 기반 상품 추천", "관계 유지·추가 구매"),
+        ]
+        st.dataframe(
+            pd.DataFrame(guide_rows, columns=["캠페인", "추천 대상", "주요 실행", "기대 효과"]),
+            hide_index=True,
+            width="stretch",
+        )
+        st.info(
+            "분류 우선순위: 구매 1회 고객을 먼저 '첫 구매 고객'으로 구분한 뒤, "
+            "반복 구매 고객을 '이탈 위험 높음 → 장기 구매 주기 → 정상' 순서로 구분합니다. "
+            "따라서 한 고객에게 여러 캠페인이 동시에 지정되지 않습니다."
+        )
+        st.caption(
+            "여기서 90일은 고객의 정확한 다음 구매일을 예측한 값이 아니라, 프로젝트의 Target 관찰 기간과 "
+            "일치시킨 룰 기반 분류 기준입니다. 실제 발송 시점은 고객별 구매 이력과 함께 검토해야 합니다."
+        )
 
 
 def _risk_factors(customer: pd.Series) -> list[str]:
@@ -146,7 +182,7 @@ def _customer_interpretation(customer: pd.Series, threshold: float) -> str:
     if pd.notna(cycle_ratio) and cycle_ratio >= 1.5:
         return "평균 구매 주기를 크게 초과했고 이탈 확률도 높아 빠른 캠페인 검토가 필요합니다."
     if probability >= threshold:
-        return "현재 적용 기준 이상으로 분류되었습니다. 거래 패턴과 캠페인 비용을 함께 검토해주세요."
+        return "최종 운영 기준 이상으로 분류되었습니다. 거래 패턴과 캠페인 비용을 함께 검토해주세요."
     return "현재 캠페인 대상 기준 미만입니다. 향후 구매 활동 변화를 관찰해주세요."
 
 
@@ -353,9 +389,12 @@ def _render_customer_detail(customer: pd.Series | None, threshold: float, data_a
 
         st.markdown("**추천 캠페인**")
         st.markdown(f"**{campaign['name']}**")
+        st.markdown(f"**추천 대상**  \n{campaign['target']}")
         st.caption(f"추천 이유 · {campaign['reason']}")
         st.markdown("**권장 실행 방법**")
         st.markdown("\n".join(f"- {action}" for action in campaign["actions"]))
+        st.markdown(f"**기대 효과**  \n{campaign['effect']}")
+        st.markdown(f"**운영 시 주의사항**  \n{campaign['caution']}")
 
 
 def _clear_customer_search():
@@ -372,6 +411,8 @@ def _render_download_group(
     file_prefix: str,
     scope_label: str,
     key_prefix: str,
+    *,
+    csv_button_label: str = "CRM 발송 대상 CSV 다운로드",
 ):
     """[Doo 작업] 다운로드 범위와 파일 용도를 분리해 혼동을 방지합니다."""
     st.markdown(f"**{title}**")
@@ -385,7 +426,7 @@ def _render_download_group(
             disabled=True, width="stretch", key=f"{key_prefix}_excel_empty",
         )
         disabled_right.download_button(
-            "CRM 업로드용 CSV 다운로드", data=b"", file_name="empty.csv",
+            csv_button_label, data=b"", file_name="empty.csv",
             disabled=True, width="stretch", key=f"{key_prefix}_csv_empty",
         )
         return
@@ -412,7 +453,7 @@ def _render_download_group(
         key=f"{key_prefix}_excel",
     )
     csv_column.download_button(
-        "CRM 업로드용 CSV 다운로드",
+        csv_button_label,
         data=csv_bytes,
         file_name=f"{file_prefix}_threshold_{threshold_label}pct_{file_date}.csv",
         mime="text/csv",
@@ -424,7 +465,7 @@ def _render_download_group(
 def _prepare_scored_snapshot(model, preprocessor):
     """공통 고객 점수와 CRM 파생 컬럼을 한 번에 준비합니다."""
     snap = score_customers(load_customer_table(), model, preprocessor)
-    threshold = st.session_state["applied_threshold"]
+    threshold = DEFAULT_THRESHOLD
     snap["고객유형"] = snap.apply(segment, axis=1)
     snap["모델판정"] = snap["이탈확률"].ge(threshold).map(
         {True: "캠페인 대상 고객", False: "일반 관찰 고객"}
@@ -439,24 +480,20 @@ def _prepare_scored_snapshot(model, preprocessor):
 
 
 def render_summary(model, preprocessor):
-    """캠페인 기준 설정 직후 확인할 대상 규모와 고객 구성을 표시합니다."""
+    """최종 운영 기준 38%의 대상 규모와 고객 구성을 표시합니다."""
     snap, threshold = _prepare_scored_snapshot(model, preprocessor)
     campaign_target = snap[snap["이탈확률"] >= threshold]
-    high_risk = snap[snap["이탈확률"] >= 0.80]
-    selected_high_risk = campaign_target[campaign_target["이탈확률"] >= 0.80]
 
     st.divider()
-    st.markdown("### 적용 결과 요약")
-    st.caption("위에서 적용한 캠페인 기준이 고객 선정 결과에 어떻게 반영되는지 확인합니다.")
+    st.markdown(f"### 현재 고객 적용 결과 — 전체 고객 {len(snap):,}명 기준")
+    st.caption("최종 운영 기준 38%를 현재 고객 스냅샷에 적용한 결과입니다.")
 
-    first_kpi_row = st.columns(3)
+    first_kpi_row = st.columns(2)
     _kpi_card(first_kpi_row[0], "전체 고객", f"{len(snap):,}명", "현재 고객 스냅샷 전체")
     _kpi_card(
         first_kpi_row[1], "캠페인 대상 고객", f"{len(campaign_target):,}명",
-        f"현재 적용 기준 {threshold:.0%} 이상",
+        f"최종 운영 기준 {threshold:.0%} 이상",
     )
-    _kpi_card(first_kpi_row[2], "고위험 고객", f"{len(high_risk):,}명", "이탈 확률 80% 이상")
-
     second_kpi_row = st.columns(3)
     first_purchase_count = int((snap["고객유형"] == "첫 구매 고객").sum())
     long_cycle_count = int((snap["고객유형"] == "장기 구매 주기").sum())
@@ -474,12 +511,11 @@ def render_summary(model, preprocessor):
         selection_summary = pd.DataFrame(
             {
                 "고객 수": [
-                    len(selected_high_risk),
-                    len(campaign_target) - len(selected_high_risk),
+                    len(campaign_target),
                     len(snap) - len(campaign_target),
                 ],
             },
-            index=["고위험 고객", "일반 캠페인 대상", "관찰 고객"],
+            index=["캠페인 대상", "관찰 고객"],
         )
         st.bar_chart(selection_summary, horizontal=True, color="#2F80ED")
     with summary_right:
@@ -489,9 +525,9 @@ def render_summary(model, preprocessor):
             "Excel 또는 CSV로 내려받으세요."
         )
         st.markdown(
-            f"- 현재 적용 기준: **{threshold:.0%}**\n"
+            f"- 최종 운영 기준: **{threshold:.0%}**\n"
             f"- 캠페인 대상 비율: **{len(campaign_target) / len(snap):.1%}**\n"
-            f"- 고위험 고객 비율: **{len(high_risk) / len(snap):.1%}**"
+            f"- 관찰 고객 비율: **{(len(snap) - len(campaign_target)) / len(snap):.1%}**"
         )
 
 
@@ -507,18 +543,17 @@ def render(model, preprocessor):
     data_as_of = snap["last_purchase"].max()
     data_as_of_text = data_as_of.date().isoformat() if pd.notna(data_as_of) else ""
     campaign_target = snap[snap["이탈확률"] >= threshold]
-    high_risk = snap[snap["이탈확률"] >= 0.80]
 
     st.markdown("### 고객 목록")
     st.markdown(
-        "첫 번째 메뉴에서 적용한 기준을 바탕으로 고객을 검색·필터링합니다.  \n"
+        "최종 운영 기준 38%를 바탕으로 고객을 검색·필터링합니다.  \n"
         "행을 선택하면 상세 정보와 추천 캠페인을 확인하고 실행용 목록을 내려받을 수 있습니다."
     )
     st.markdown(
         f"""
         <div style="background:#EAF3FF;border:1px solid #BBD7FF;border-radius:10px;
                     padding:14px 18px;margin:12px 0 18px 0;">
-            <div style="color:#1F6FCC;font-size:13px;font-weight:700;">현재 적용된 캠페인 기준</div>
+            <div style="color:#1F6FCC;font-size:13px;font-weight:700;">최종 운영 기준</div>
             <div style="font-size:24px;font-weight:750;margin:4px 0;">{threshold:.0%}</div>
             <div style="color:#425466;font-size:13px;">
                 이탈 확률이 {threshold:.0%} 이상인 고객이 캠페인 대상입니다.
@@ -527,6 +562,7 @@ def render(model, preprocessor):
         """,
         unsafe_allow_html=True,
     )
+    _render_campaign_guide()
 
     # CustomerID 검색 — 필터보다 먼저 제공하고 검색 결과는 필터와 무관하게 선택합니다.
     st.markdown("#### CustomerID 검색")
@@ -560,7 +596,6 @@ def render(model, preprocessor):
     management_counts = {
         "전체 고객": len(snap),
         "캠페인 대상 고객": len(campaign_target),
-        "고위험 고객": len(high_risk),
     }
     type_options = ["전체 유형", "첫 구매 고객", "반복 구매 고객", "장기 구매 주기 고객", "기타 관리 고객"]
 
@@ -581,8 +616,6 @@ def render(model, preprocessor):
     view = snap
     if management_filter == "캠페인 대상 고객":
         view = view[view["이탈확률"] >= threshold]
-    elif management_filter == "고위험 고객":
-        view = view[view["이탈확률"] >= 0.80]
     if type_filter != "전체 유형":
         view = view[view["고객유형필터"] == type_filter]
     view = view.sort_values("이탈확률", ascending=False).reset_index(drop=True)
@@ -593,7 +626,7 @@ def render(model, preprocessor):
         st.markdown(f"#### 우선순위 고객 목록 · {len(view):,}명")
         st.caption("이탈 확률이 높은 순으로 표시됩니다. 표의 열 제목을 눌러 다시 정렬할 수 있습니다.")
         if view.empty:
-            st.info("현재 조건에 해당하는 고객이 없습니다. 필터 조건이나 캠페인 기준을 조정해주세요.")
+            st.info("현재 조건에 해당하는 고객이 없습니다. 관리 범위나 고객 유형 필터를 확인해주세요.")
         else:
             display_df = view[
                 ["CustomerID", "고객유형", "이탈확률", "평소_주기_대비", "추천캠페인", "우선순위"]
@@ -640,10 +673,10 @@ def render(model, preprocessor):
 
     # 5) 다운로드 범위를 현재 필터 결과와 전체 캠페인 대상으로 명확히 분리합니다.
     st.divider()
-    st.markdown("### 캠페인 실행용 고객 목록 다운로드")
+    st.markdown("### 고객 목록 다운로드")
     st.markdown(
-        f"현재 적용 기준 **{threshold:.0%} 이상**, 전체 캠페인 대상 고객 **{len(campaign_target):,}명**입니다.  \n"
-        "화면 필터 결과와 전체 캠페인 대상의 다운로드 범위를 구분해 사용하세요."
+        f"최종 운영 기준 **{threshold:.0%} 이상**, 전체 캠페인 대상 고객 **{len(campaign_target):,}명**입니다.  \n"
+        "조회·검토용 목록에는 일반 고객이 포함될 수 있습니다. 실제 발송에는 캠페인 실행 대상 파일만 사용하세요."
     )
 
     filtered_export = _build_campaign_export(
@@ -652,30 +685,28 @@ def render(model, preprocessor):
     full_campaign_export = _build_campaign_export(
         snap, threshold, campaign_only=True, data_as_of=data_as_of,
     )
-    download_summary = st.columns(4)
-    download_summary[0].metric("현재 필터 결과", f"{len(filtered_export):,}명")
-    download_summary[1].metric("전체 캠페인 대상", f"{len(full_campaign_export):,}명")
-    download_summary[2].metric("적용 기준", f"{threshold:.0%}")
-    download_summary[3].metric("포함 컬럼", f"{len(full_campaign_export.columns)}개")
-    st.caption(f"데이터 기준일 {data_as_of_text or '정보 없음'} · Excel은 검토용, CSV는 시스템 업로드용")
+    download_summary = st.columns(2)
+    download_summary[0].metric("현재 조회 고객", f"{len(filtered_export):,}명")
+    download_summary[1].metric("캠페인 실행 대상", f"{len(full_campaign_export):,}명")
 
     filtered_download_column, full_download_column = st.columns(2, gap="large")
     with filtered_download_column:
         with st.container(border=True):
             _render_download_group(
-                "현재 필터 결과 다운로드",
-                f"현재 관리 범위와 고객 유형 필터를 모두 만족하는 {len(filtered_export):,}명만 포함합니다.",
+                "① 조회·검토용 목록",
+                f"현재 화면 필터를 만족하는 {len(filtered_export):,}명입니다. 38% 미만 일반 고객이 포함될 수 있으며 실제 발송용이 아닙니다.",
                 filtered_export,
                 threshold,
                 "filtered_customers",
                 "현재 화면 필터 결과",
                 "filtered_customers",
+                csv_button_label="조회 결과 CSV 다운로드",
             )
     with full_download_column:
         with st.container(border=True):
             _render_download_group(
-                "전체 캠페인 대상 다운로드",
-                f"화면 필터와 관계없이 현재 적용 기준 이상 고객 {len(full_campaign_export):,}명을 포함합니다.",
+                "② 캠페인 실행 대상",
+                f"화면 필터와 관계없이 최종 운영 기준 38% 이상 고객 {len(full_campaign_export):,}명만 포함합니다. 실제 CRM 발송에는 이 파일을 사용하세요.",
                 full_campaign_export,
                 threshold,
                 "campaign_targets",

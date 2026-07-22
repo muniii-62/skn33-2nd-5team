@@ -1,6 +1,6 @@
 import joblib
 import streamlit as st
-from config import MODEL_PATH, PREPROCESSOR_PATH, FEATURE_ORDER
+from config import PIPELINE_PATH, FEATURE_ORDER
 
 
 def _get_transformer_column_order(preprocessor):
@@ -19,8 +19,16 @@ def _get_transformer_column_order(preprocessor):
 
 @st.cache_resource
 def load_model():
-    model = joblib.load(MODEL_PATH)
-    preprocessor = joblib.load(PREPROCESSOR_PATH)
+    pipeline = joblib.load(PIPELINE_PATH)
+    if not hasattr(pipeline, "named_steps"):
+        raise RuntimeError("저장된 churn_pipeline.joblib이 scikit-learn Pipeline 형식이 아닙니다.")
+    try:
+        preprocessor = pipeline.named_steps["preprocessor"]
+        model = pipeline.named_steps["classifier"]
+    except KeyError as error:
+        raise RuntimeError(
+            "churn_pipeline.joblib에 preprocessor와 classifier 단계가 모두 필요합니다."
+        ) from error
 
     # 전처리기 실제 출력 순서와 FEATURE_ORDER가 어긋나면, 에러 없이 조용히
     # 잘못된 예측이 나갈 수 있으므로 앱 시작 시점에 강제로 검증한다.
@@ -35,4 +43,6 @@ def load_model():
             "전처리 파이프라인이 바뀌었다면 config.py의 FEATURE_ORDER를 이 순서로 갱신하세요."
         )
 
+    # 기존 탭의 공통 추론 함수를 유지하면서도 모델과 전처리기는 단일 제출
+    # Pipeline에서만 가져옵니다. 별도 모델 파일과 전처리기 파일은 로드하지 않습니다.
     return model, preprocessor

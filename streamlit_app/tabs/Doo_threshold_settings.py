@@ -177,14 +177,14 @@ def _render_threshold_chart(sweep_df, selected_threshold, applied_threshold, sel
     )
 
     goal_rule = (
-        alt.Chart(pd.DataFrame({"목표": [0.80]}))
+        alt.Chart(pd.DataFrame({"목표": [0.85]}))
         .mark_rule(color="#27AE60", strokeDash=[4, 4], strokeWidth=2)
         .encode(y="목표:Q")
     )
     goal_label = (
-        alt.Chart(pd.DataFrame({"Threshold": [0.11], "목표": [0.80]}))
+        alt.Chart(pd.DataFrame({"Threshold": [0.11], "목표": [0.85]}))
         .mark_text(align="left", dy=-8, color="#218C4A", fontWeight="bold")
-        .encode(x="Threshold:Q", y="목표:Q", text=alt.value("이탈 고객 발견률 목표 80%"))
+        .encode(x="Threshold:Q", y="목표:Q", text=alt.value("이탈 고객 발견률 목표 85%"))
     )
 
     selected_rule = (
@@ -212,7 +212,7 @@ def _render_threshold_chart(sweep_df, selected_threshold, applied_threshold, sel
         .encode(
             x="Threshold:Q",
             y="점수:Q",
-            text=alt.value(f"실제 적용 {applied_threshold:.0%}"),
+            text=alt.value(f"최종 운영 {applied_threshold:.0%}"),
         )
     )
 
@@ -408,7 +408,7 @@ def render(model):
     )
     _metric_card(
         first_row[1], "실제 이탈 고객 발견률", f"{selected_metrics['recall']:.1%}",
-        "목표 80% 이상 충족" if selected_metrics["recall"] >= 0.80 else "목표 80%보다 낮음",
+        "목표 85% 이상 충족" if selected_metrics["recall"] >= 0.85 else "목표 85%보다 낮음",
     )
     _metric_card(
         first_row[2], "놓칠 수 있는 이탈 고객 수", f"{selected_metrics['fn']:,}명",
