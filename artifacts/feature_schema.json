@@ -3,16 +3,16 @@
   "artifact_type": "engineered_customer_input",
   "description": "models/final/churn_pipeline.joblib에 전달되는 고객 집계 Feature 스키마. Pipeline 내부에서 로그 변환과 스케일링을 수행한다.",
   "features": [
+    "net_revenue",
     "recency_days",
     "frequency",
     "distinct_products",
-    "net_revenue",
     "tenure_days",
-    "is_uk",
     "avg_days_between_orders",
+    "is_low_value",
+    "is_uk",
     "has_return",
-    "recent_activity_ratio",
-    "is_low_value"
+    "recent_activity_ratio"
   ],
   "feature_count": 10,
   "dtype": "float64",

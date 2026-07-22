@@ -71,7 +71,7 @@ def _campaign_plan(customer: pd.Series) -> dict:
     if customer_type == "이탈 위험 높음":
         return {
             "name": "개인화 리텐션 쿠폰",
-            "target": "2회 이상 거래했고, 평균 거래 간격은 90일 미만이지만 최근 거래 활동 후 90일 이상 지난 고객",
+            "target": "2회 이상 거래했고, 주문 1회당 활동 기간은 90일 미만이지만 최근 거래 활동 후 90일 이상 지난 고객",
             "reason": f"평소 구매 주기를 초과했고 현재 이탈 확률이 {probability:.1%}입니다.",
             "actions": [
                 "7일 이내 사용 가능한 개인화 쿠폰 발송",
@@ -130,8 +130,8 @@ def _render_campaign_guide():
         )
         guide_rows = [
             ("웰컴 캠페인", "구매 1회", "두 번째 구매 쿠폰·연관 상품 안내", "첫 재구매 전환"),
-            ("개인화 리텐션 쿠폰", "평균 거래 간격 90일 미만, 최근 거래 활동 후 90일 이상", "개인화 쿠폰·우선 메시지", "단기 이탈 방지"),
-            ("구매 주기 리마인드", "평균 구매 간격 90일 이상", "과거 구매 주기에 맞춘 상품 안내", "자연스러운 재구매 유도"),
+            ("개인화 리텐션 쿠폰", "주문 1회당 활동 기간 90일 미만, 최근 거래 활동 후 90일 이상", "개인화 쿠폰·우선 메시지", "단기 이탈 방지"),
+            ("구매 주기 리마인드", "주문 1회당 활동 기간 90일 이상", "과거 구매 주기에 맞춘 상품 안내", "자연스러운 재구매 유도"),
             ("일반 리텐션 캠페인", "나머지 반복 구매 고객", "최근 구매 기반 상품 추천", "관계 유지·추가 구매"),
         ]
         st.dataframe(
@@ -369,7 +369,7 @@ def _render_customer_detail(customer: pd.Series | None, threshold: float, data_a
         detail_left, detail_right = st.columns(2)
         with detail_left:
             _detail_row("최근 거래 활동 후", f"{int(customer['recency_days'])}일")
-            _detail_row("평균 구매 간격", f"{customer['avg_days_between_orders']:.1f}일")
+            _detail_row("주문 1회당 활동 기간", f"{customer['avg_days_between_orders']:.1f}일")
             cycle_ratio = customer["평소_주기_대비"]
             _detail_row("활동 주기 대리값 대비", f"{cycle_ratio:.1f}배" if pd.notna(cycle_ratio) else "정보 없음")
             _detail_row("총 구매 횟수", f"{int(customer['frequency'])}회")
