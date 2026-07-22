@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "artifact_type": "engineered_customer_input",
-  "description": "models/churn_pipeline.joblib에 전달되는 고객 집계 Feature 스키마. Pipeline 내부에서 로그 변환과 스케일링을 수행한다.",
+  "description": "models/final/churn_pipeline.joblib에 전달되는 고객 집계 Feature 스키마. Pipeline 내부에서 로그 변환과 스케일링을 수행한다.",
   "features": [
     "recency_days",
     "frequency",
@@ -49,5 +49,5 @@
   "missing_values_allowed": false,
   "preprocessor_path": "data/preprocessed/preprocessor.pkl",
   "classifier_path": "models/final/model_final.joblib",
-  "model_path": "models/churn_pipeline.joblib"
+  "model_path": "models/final/churn_pipeline.joblib"
 }
