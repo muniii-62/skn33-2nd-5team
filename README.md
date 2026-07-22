@@ -1,4 +1,32 @@
-# 이탈하지말아조 — 이커머스 구매 고객 재구매 이탈 예측
+# 팀 - 이탈하지 말아조😭
+## 👥 팀원 소개
+
+
+<table>
+  <tr>
+    <td align="center"><img src="https://github.com/user-attachments/assets/e10357cb-19ec-4651-b25c-1aee30a1674f" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/d7ed0097-03ee-4e24-91d1-c72274685cd5" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/f0a8eb97-8453-4629-bb0e-683736f2e06b" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/732c55fd-b4a0-45eb-b9d3-767e3d7db91b" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/c2a45d8f-7c50-4a59-bcc6-fe9b150302fc" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
+  </tr>
+  <tr>
+    <td align="center"><b>김문규 (kmk)</b></td>
+    <td align="center"><b>이서영 (lsy)</b></td>
+    <td align="center"><b>정현두 (jhd)</b></td>
+    <td align="center"><b>권세진 (ksj)</b></td>
+    <td align="center"><b>허유나 (hyn)</b></td>
+  </tr>
+  <tr>
+    <td align="center">팀장 · EDA·데이터 전처리 · Target 정의, RandomForest 모델링</td>
+    <td align="center">RandomForest 모델링 · 하이퍼파라미터 튜닝 · 발표</td>
+    <td align="center">XGBoost 모델링 · 임계값 최적화 · Streamlit 대시보드 개발</td>
+    <td align="center">Logistic Regression 모델링 · Streamlit 대시보드 개발 · PPT 제작</td>
+    <td align="center">LightGBM 모델링 · Feature Importance·SHAP 분석 · PPT 제작</td>
+  </tr>
+</table>
+
+# 이커머스 구매 고객 재구매 이탈 예측
 
 UCI **Online Retail II**의 영국 이커머스 실거래 로그를 고객 단위로 집계해,
 향후 90일 동안 재구매하지 않을 가능성이 높은 구매 고객을 예측하는 프로젝트입니다. 예측 결과는
