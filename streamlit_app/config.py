@@ -1,7 +1,7 @@
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-PIPELINE_PATH = PROJECT_ROOT / "models" / "churn_pipeline.joblib"
+PIPELINE_PATH = PROJECT_ROOT / "models" / "final" / "churn_pipeline.joblib"
 
 
 

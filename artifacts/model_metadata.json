@@ -4,7 +4,7 @@
   "trained_at": "2026-07-21",
   "model_path": "models/final/model_final.joblib",
   "model_sha256": "4b3e0983cad1e81a715f20a7c710066a95512c5c79784dbadb431293f6c4c6bb",
-  "deployment_pipeline_path": "models/churn_pipeline.joblib",
+  "deployment_pipeline_path": "models/final/churn_pipeline.joblib",
   "deployment_pipeline_sha256": "abfc425f6b902f56a87a00db5d874aaf1806abc7c83d5c0a9e99640ca9aa7d32",
   "threshold": 0.38,
   "target_definition": "기준일 이후 90일 동안 정상 재구매가 관측되지 않음",

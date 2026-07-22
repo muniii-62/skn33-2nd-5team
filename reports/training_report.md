@@ -206,7 +206,7 @@ Test 데이터에서 예측 확률의 신뢰성을 Calibration Curve와 Brier Sc
 
 ## 13. 최종 모델 선정
 
-최종 분류기는 `models/final/model_final.joblib`의 XGBoost이고 운영 Threshold는 0.38이다. 제출 및 신규 고객 예측용 단일 산출물은 전처리기와 분류기를 결합한 `models/churn_pipeline.joblib`이다.
+최종 분류기는 `models/final/model_final.joblib`의 XGBoost이고 운영 Threshold는 0.38이다. 제출 및 신규 고객 예측용 단일 산출물은 전처리기와 분류기를 결합한 `models/final/churn_pipeline.joblib`이다.
 
 선정 근거는 다음과 같다.
 
@@ -249,8 +249,10 @@ artifacts/
 └── permutation_importance.csv
 
 models/
-├── churn_pipeline.joblib
-└── final/model_final.joblib
+└── final/
+    ├── churn_pipeline.joblib
+    ├── model_final.joblib
+    └── preprocessor_prototype.joblib
 ```
 
 `churn_pipeline.joblib`은 고객 집계 Feature 10개를 받아 내부 전처리 후 이탈 확률을 출력한다. `model_metadata.json`에는 모델과 Pipeline의 SHA-256 해시, 하이퍼파라미터, Threshold 선택 규칙이 기록된다.
