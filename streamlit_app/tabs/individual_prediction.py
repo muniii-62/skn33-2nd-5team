@@ -46,8 +46,12 @@ def render(model, preprocessor):
 
         with col2:
             avg_days_between_orders = float(tenure_days) / float(frequency)
-            st.metric("↔️ 평균 구매 간격", f"{avg_days_between_orders:.1f}일")
-            st.caption("첫 구매 후 경과일 ÷ 구매 횟수로 자동 계산됩니다.")
+            # [Doo 작업] 계산식과 모델 입력은 유지하고 사용자 노출 명칭과 설명만 정정했다.
+            st.metric("↔️ 주문 1회당 활동 기간", f"{avg_days_between_orders:.1f}일")
+            st.caption(
+                "첫 구매 후 경과일 ÷ 구매 횟수로 계산하는 "
+                "구매 간격 대리값입니다. 실제 주문 사이의 평균은 아닙니다."
+            )
             has_return = st.selectbox(
                 "↩️ 취소 경험 있음?", ["아니오", "예"], key="ind_has_return",
                 help="관찰 기간 중 주문 취소/반품 이력이 한 번이라도 있었는지",

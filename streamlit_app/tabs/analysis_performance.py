@@ -100,6 +100,7 @@ def _render_eda() -> None:
         st.dataframe(quality_df, hide_index=True, width="stretch")
 
     st.markdown("#### 핵심 인사이트")
+    # [Doo 작업] avg_days_between_orders의 계산 의미에 맞춰 표시 명칭만 정정했다.
     st.markdown(
         "- 이탈 고객은 최근 거래 활동 후 경과일과 평균 구매 간격이 더 깁니다.\n"
         "- 이탈 고객은 구매 횟수·상품 다양성·과거 순매출이 상대적으로 낮습니다.\n"

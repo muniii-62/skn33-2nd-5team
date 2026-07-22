@@ -105,7 +105,7 @@ Target은 원본에 존재하지 않으며 `src/features.py`의 `make_snapshot()
 | `frequency` | 11.55 | 4.19 | 이탈 고객의 구매 횟수가 적다 |
 | `distinct_products` | 115.79 | 53.00 | 이탈 고객의 상품 다양성이 낮다 |
 | `net_revenue` | 4,734.07 | 1,254.40 | 이탈 고객의 과거 순매출이 낮다 |
-| `avg_days_between_orders` | 80.19 | 145.96 | 이탈 고객의 평균 구매 간격이 길다 |
+| `avg_days_between_orders` | 80.19 | 145.96 | 이탈 고객의 주문 1회당 활동 기간이 길다 |
 | `recent_activity_ratio` | 0.200 | 0.128 | 이탈 고객의 최근 활동 비중이 낮다 |
 
 이 차이는 장기간 미구매, 낮은 구매 빈도, 긴 구매 간격을 함께 고려하는 것이 재구매 이탈 예측에 유용하다는 근거다. 다만 이는 집단 평균 비교이며 인과관계를 뜻하지 않는다.
@@ -143,6 +143,8 @@ Target과의 절대 상관이 상대적으로 큰 변수는 `avg_days_between_or
 
 `src/features.py`에서 거래 행을 고객 단위로 집계했다.
 
+<!-- [Doo 작업] avg_days_between_orders 계산식은 유지하고 실제 의미에 맞게 표시 명칭만 정정함. -->
+
 | 생성 Feature | 계산 방식 | 의미 |
 |---|---|---|
 | `recency_days` | 기준일 - 최근 거래 활동일 | 최근 거래 활동 후 경과일 |
@@ -151,7 +153,7 @@ Target과의 절대 상관이 상대적으로 큰 변수는 `avg_days_between_or
 | `net_revenue` | `Quantity × Price` 합계 | 취소·반품을 차감한 순매출 |
 | `tenure_days` | 기준일 - 첫 구매일 | 첫 구매 후 고객 활동 기간 |
 | `avg_order_value` | 순매출 ÷ 구매 횟수 | 평균 주문금액 |
-| `avg_days_between_orders` | 활동 기간 ÷ 구매 횟수 | 구매 간격 대리값 |
+| `avg_days_between_orders` | 활동 기간 ÷ 구매 횟수 | 주문 1회당 활동 기간(구매 간격 대리값) |
 | `return_ratio` | 반품 수량 ÷ 전체 수량 | 반품 비중 |
 | `recent_activity_ratio` | 최근 90일 주문 수 ÷ 전체 주문 수 | 최근 활동 비중 |
 | `is_uk` | 주요 국가가 UK인지 여부 | 지역 이진 변수 |

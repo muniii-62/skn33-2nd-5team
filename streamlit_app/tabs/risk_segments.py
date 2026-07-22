@@ -60,7 +60,11 @@ def _customer_type_group(row: pd.Series) -> str:
 
 
 def _campaign_plan(customer: pd.Series) -> dict:
-    """[Doo 작업] 기존 고객 유형 규칙을 실무형 추천 문구로 확장합니다."""
+    """[Doo 작업] 기존 고객 유형 규칙을 실무형 추천 문구로 확장합니다.
+
+    avg_days_between_orders는 실제 평균 구매 간격이 아니므로 화면에서는
+    `주문 1회당 활동 기간` 또는 `활동 주기 대리값`으로 표시합니다.
+    """
     probability = customer["이탈확률"]
     customer_type = customer["고객유형"]
 
@@ -93,8 +97,8 @@ def _campaign_plan(customer: pd.Series) -> dict:
     if customer_type == "장기 구매 주기":
         return {
             "name": "구매 주기 리마인드",
-            "target": "2회 이상 구매했고 평균 구매 간격이 90일 이상인 장기 주기 고객",
-            "reason": "평균 구매 간격이 긴 고객이므로 기존 구매 주기에 맞춘 접근이 적합합니다.",
+            "target": "2회 이상 구매했고 주문 1회당 활동 기간이 90일 이상인 장기 활동 주기 고객",
+            "reason": "주문 1회당 활동 기간이 긴 고객이므로 기존 활동 주기에 맞춘 접근이 적합합니다.",
             "actions": [
                 "고객의 과거 구매 주기를 참고해 적절한 시점에 상품 재구매 안내 발송",
                 "과도한 조기 할인 발송은 제외",
@@ -158,7 +162,7 @@ def _risk_factors(customer: pd.Series) -> list[str]:
     if pd.notna(recency) and recency >= 60:
         factors.append(f"최근 거래 활동 후 {int(recency)}일이 경과했습니다.")
     if pd.notna(cycle_ratio) and cycle_ratio >= 1.2:
-        factors.append(f"평균 구매 간격보다 {cycle_ratio:.1f}배 오래 구매하지 않았습니다.")
+        factors.append(f"활동 주기 대리값보다 {cycle_ratio:.1f}배 오래 구매하지 않았습니다.")
     if pd.notna(frequency) and int(frequency) == 1:
         factors.append("구매 횟수가 1회인 첫 구매 고객입니다.")
     if pd.notna(recent_ratio) and recent_ratio == 0:
@@ -220,8 +224,8 @@ def _build_campaign_export(
         "고객유형": "고객유형",
         "추천캠페인": "추천캠페인",
         "recency_days": "최근구매후경과일",
-        "avg_days_between_orders": "평균구매간격(일)",
-        "평소_주기_대비": "평소주기대비(배)",
+        "avg_days_between_orders": "주문1회당활동기간(일)",
+        "평소_주기_대비": "활동주기대리값대비(배)",
         "frequency": "구매횟수",
         "distinct_products": "구매상품종류수",
         "net_revenue": "순매출",
@@ -232,7 +236,7 @@ def _build_campaign_export(
     result = export_df[list(export_columns)].rename(columns=export_columns).reset_index(drop=True)
     if not result.empty:
         result["CustomerID"] = result["CustomerID"].astype(int)
-    result["평균구매간격(일)"] = result["평균구매간격(일)"].round(1)
+    result["주문1회당활동기간(일)"] = result["주문1회당활동기간(일)"].round(1)
     result["순매출"] = result["순매출"].round(2)
     return result
 
@@ -367,7 +371,7 @@ def _render_customer_detail(customer: pd.Series | None, threshold: float, data_a
             _detail_row("최근 거래 활동 후", f"{int(customer['recency_days'])}일")
             _detail_row("평균 구매 간격", f"{customer['avg_days_between_orders']:.1f}일")
             cycle_ratio = customer["평소_주기_대비"]
-            _detail_row("평소 주기 대비", f"{cycle_ratio:.1f}배" if pd.notna(cycle_ratio) else "정보 없음")
+            _detail_row("활동 주기 대리값 대비", f"{cycle_ratio:.1f}배" if pd.notna(cycle_ratio) else "정보 없음")
             _detail_row("총 구매 횟수", f"{int(customer['frequency'])}회")
         with detail_right:
             _detail_row("구매 상품 종류", f"{int(customer['distinct_products']):,}개")
@@ -499,7 +503,7 @@ def render_summary(model, preprocessor):
     long_cycle_count = int((snap["고객유형"] == "장기 구매 주기").sum())
     average_target_probability = campaign_target["이탈확률"].mean() if not campaign_target.empty else 0
     _kpi_card(second_kpi_row[0], "첫 구매 고객", f"{first_purchase_count:,}명", "구매 횟수 1회")
-    _kpi_card(second_kpi_row[1], "장기 구매 주기 고객", f"{long_cycle_count:,}명", "평균 구매 간격 90일 이상")
+    _kpi_card(second_kpi_row[1], "장기 활동 주기 고객", f"{long_cycle_count:,}명", "주문 1회당 활동 기간 90일 이상")
     _kpi_card(
         second_kpi_row[2], "대상 고객 평균 이탈 확률", f"{average_target_probability:.1%}",
         "현재 캠페인 대상 고객 평균",
@@ -653,7 +657,7 @@ def render(model, preprocessor):
                     "이탈확률": st.column_config.ProgressColumn(
                         "이탈 확률", format="%.1f%%", min_value=0, max_value=100,
                     ),
-                    "평소_주기_대비": st.column_config.NumberColumn("평소 주기 대비", format="%.1f배"),
+                    "평소_주기_대비": st.column_config.NumberColumn("활동 주기 대리값 대비", format="%.1f배"),
                     "추천캠페인": st.column_config.TextColumn("추천 캠페인", width="medium"),
                 },
             )

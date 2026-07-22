@@ -26,7 +26,8 @@ FEATURE_LABELS = {
     "frequency": "구매 횟수",
     "distinct_products": "구매 상품 종류 수",
     "tenure_days": "첫 구매 후 경과일",
-    "avg_days_between_orders": "평균 구매 간격",
+    # [Doo 작업] 실제 주문 간 평균이 아닌 `활동 기간 ÷ 주문 횟수`이므로 명칭을 정정했다.
+    "avg_days_between_orders": "주문 1회당 활동 기간",
     "is_low_value": "저가치 고객 여부",
     "is_uk": "UK 거주 여부",
     "has_return": "취소 경험 여부",

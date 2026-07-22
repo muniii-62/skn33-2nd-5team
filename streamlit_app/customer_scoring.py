@@ -2,6 +2,7 @@
 risk_segments 탭과 roi_simulator 탭이 같은 고객 모집단을 써야 하므로 여기로 분리."""
 
 import json
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -11,12 +12,27 @@ from src.features import make_snapshot
 
 WINDOW = 90  # 라벨 계산용 (여기선 미사용, make_snapshot 인터페이스상 필수 인자)
 
+# [Doo 작업] 원본 데이터와 저가치 기준 파일이 바뀌면 기존 디스크 캐시를
+# 재사용하지 않도록 두 파일의 버전 정보를 Streamlit 캐시 키에 포함한다.
+RAW_DATA_PATH = PROJECT_ROOT / "data" / "raw" / "online_retail_II.csv"
+LOW_VALUE_THRESHOLD_PATH = (
+    PROJECT_ROOT / "data" / "preprocessed" / "is_low_value_threshold.json"
+)
+
+
+def _file_version(path: Path) -> tuple[int, int]:
+    """캐시 무효화에 사용할 파일의 수정 시각과 크기를 반환한다."""
+    stat = path.stat()
+    return stat.st_mtime_ns, stat.st_size
+
 
 @st.cache_data(persist="disk", show_spinner="고객 데이터 집계 중... (최초 1회만 오래 걸림)")
-def load_customer_table():
+def _load_customer_table(raw_version: tuple[int, int], threshold_version: tuple[int, int]):
     """raw 데이터에서 고객 스냅샷(원본 스케일)을 만들어 반환. 이탈확률은 아직 없음."""
+    # 파일 버전 인자는 Streamlit 캐시 키로 사용된다.
+    _ = raw_version, threshold_version
     raw_max_date = pd.read_csv(
-        PROJECT_ROOT / "data" / "raw" / "online_retail_II.csv",
+        RAW_DATA_PATH,
         encoding="ISO-8859-1", usecols=["InvoiceDate"]
     )["InvoiceDate"].max()
     cutoff = pd.to_datetime(raw_max_date)
@@ -29,12 +45,19 @@ def load_customer_table():
 
     # 학습 시 Train만으로 계산한 is_low_value 임계값(q20)을 그대로 재사용 — 데이터 누수 없이
     # 재현 (prepare_data.py가 data/preprocessed/is_low_value_threshold.json에 저장해둠).
-    threshold_path = PROJECT_ROOT / "data" / "preprocessed" / "is_low_value_threshold.json"
-    with open(threshold_path) as f:
+    with open(LOW_VALUE_THRESHOLD_PATH, encoding="utf-8") as f:
         q20 = json.load(f)["avg_order_value_q20"]
     snap["is_low_value"] = (snap["avg_order_value"] <= q20).astype(int)
 
     return snap
+
+
+def load_customer_table():
+    """[Doo 작업] 파일 버전을 캐시 키에 포함해 고객 스냅샷을 로드한다."""
+    return _load_customer_table(
+        _file_version(RAW_DATA_PATH),
+        _file_version(LOW_VALUE_THRESHOLD_PATH),
+    )
 
 
 def score_customers(snap: pd.DataFrame, model, preprocessor) -> pd.DataFrame:
