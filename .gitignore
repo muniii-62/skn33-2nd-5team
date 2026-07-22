@@ -5,6 +5,9 @@ venv/
 # 파이참 설정
 .idea/
 
+# macOS 메타데이터
+.DS_Store
+
 # 파이썬 캐시
 __pycache__/
 *.pyc
