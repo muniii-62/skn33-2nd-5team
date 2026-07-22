@@ -15,8 +15,8 @@ def render(model, preprocessor):
 
         with col1:
             recency_days = st.slider(
-                "🕒 최근 구매 후 경과일", 0, 365, 60, key="ind_recency",
-                help="마지막 구매일로부터 오늘까지 지난 일수",
+                "🕒 최근 거래 활동 후 경과일", 0, 365, 60, key="ind_recency",
+                help="최근 구매·취소·반품 거래 활동일로부터 기준일까지 지난 일수",
             )
             frequency = st.number_input(
                 "🔁 구매 횟수", min_value=1, max_value=356, value=5, step=1,
