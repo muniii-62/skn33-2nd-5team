@@ -360,86 +360,76 @@ Target과의 절대 상관은 평균 거래 간격, 최근 거래 활동 후 경
 
 ```text
 Project2/
-├── README.md
-├── requirements.txt
+├── README.md                              # 프로젝트 소개·실행 방법·수행 결과
+├── requirements.txt                      # Python 패키지 및 버전
 ├── assets/
-│   └── streamlit/                  # README용 Streamlit 화면 캡처
+│   └── streamlit/                        # README용 Streamlit 화면 캡처 5개
 ├── data/
 │   ├── raw/
+│   │   └── online_retail_II.csv          # UCI 원본 거래 데이터(로컬 다운로드·Git 제외)
 │   └── preprocessed/
+│       ├── X_train.csv                   # 모델 학습 Feature(전처리 실행 후 생성)
+│       ├── X_val.csv                     # 모델·Threshold 선택 Feature(생성 파일)
+│       ├── X_test.csv                    # 최종 평가 Feature(생성 파일)
+│       ├── y_train.csv                   # Train Target(생성 파일)
+│       ├── y_val.csv                     # Validation Target(생성 파일)
+│       ├── y_test.csv                    # Test Target(생성 파일)
+│       ├── preprocessor.pkl              # Train 기반 전처리기(생성 파일)
+│       └── is_low_value_threshold.json   # 저가치 고객 기준(생성 파일·Git 제외)
 ├── notebooks/
-│   ├── check.ipynb
-│   ├── eda_log.ipynb
-│   ├── eda_customer.ipynb
-│   ├── preprocessing.ipynb
-│   └── model_experiments.ipynb
+│   ├── check.ipynb                       # 원본 데이터 구조와 기본 품질 점검
+│   ├── eda_log.ipynb                     # 거래 단위 EDA와 재구매 간격 분석
+│   ├── eda_customer.ipynb                # 고객 단위 EDA와 이탈 특성 분석
+│   ├── preprocessing.ipynb               # 전처리·Feature 생성 검증
+│   └── model_experiments.ipynb           # 후보 비교·Threshold·최종 평가 재현
 ├── src/
-│   ├── data.py
-│   ├── features.py
-│   ├── transforms.py
-│   └── prepare_data.py
+│   ├── data.py                           # 원본 로드와 정상 구매 거래 필터링
+│   ├── features.py                       # 고객 Feature와 90일 Target 생성
+│   ├── transforms.py                     # 로그 변환·스케일링 공통 함수
+│   └── prepare_data.py                   # 데이터 분할·전처리 학습·파일 저장
 ├── models/
 │   ├── final/
-│   │   ├── model_final.joblib
-│   │   ├── churn_pipeline.joblib
-│   │   └── preprocessor_prototype.joblib
-│   ├── kmk/                        # Random Forest 후보
-│   ├── lsy/                        # Random Forest 후보
-│   ├── jhd/                        # XGBoost 후보
-│   ├── ksj/                        # Logistic Regression 후보
-│   └── hyn/                        # LightGBM 후보
+│   │   ├── model_final.joblib            # 최종 XGBoost 분류기
+│   │   ├── churn_pipeline.joblib         # 전처리기와 최종 모델 통합 Pipeline
+│   │   ├── preprocessor_prototype.joblib # 최종 전처리기
+│   │   ├── model_comparison.ipynb        # Logistic 기준선과 최종 모델 비교
+│   │   └── final_result.ipynb            # 최종 Test 지표와 시각화
+│   ├── kmk/                              # 김문규 Random Forest 실험
+│   ├── lsy/                              # 이서영 Random Forest 실험
+│   ├── jhd/                              # 정현두 XGBoost·튜닝·임계값 실험
+│   ├── ksj/                              # 권세진 Logistic Regression 실험
+│   └── hyn/                              # 허유나 LightGBM·해석 실험
 ├── artifacts/
-│   ├── feature_schema.json
-│   ├── model_metadata.json
-│   ├── metrics.csv
-│   ├── error_analysis.csv
-│   ├── calibration_metrics.csv
-│   └── permutation_importance.csv
+│   ├── feature_schema.json               # Pipeline 입력 Feature와 Target 정의
+│   ├── model_metadata.json               # 모델·Threshold·해시·학습 조건
+│   ├── metrics.csv                       # Validation 후보와 Test 성능
+│   ├── error_analysis.csv                # TP·TN·FP·FN 고객군 비교
+│   ├── calibration_metrics.csv           # Brier Score와 확률 보정 점검
+│   └── permutation_importance.csv        # 최종 모델 Feature 중요도
 ├── reports/
-│   ├── preprocessing_report.md
-│   ├── training_report.md
+│   ├── preprocessing_report.md           # 인공지능 데이터 전처리 결과서
+│   ├── training_report.md                # 인공지능 모델 학습 결과서
 │   └── figures/
+│       ├── preprocessing/                # EDA·전처리 보고서 그래프
+│       └── training/                     # 모델 평가·오류 분석 그래프
 ├── streamlit_app/
-│   ├── app.py
-│   ├── config.py
-│   ├── customer_scoring.py
-│   ├── model_loader.py
+│   ├── app.py                            # Streamlit 대시보드 진입점
+│   ├── config.py                         # 경로·Threshold·Feature 설정
+│   ├── model_loader.py                   # 저장 모델과 전처리기 로드·검증
+│   ├── customer_scoring.py               # 현재 고객 스냅샷과 점수 계산
+│   ├── .streamlit/
+│   │   └── config.toml                   # Streamlit 테마·서버 설정
 │   └── tabs/
+│       ├── analysis_performance.py       # 데이터 분석·모델 성능 화면
+│       ├── recommended_threshold.py      # 0.38 권장 기준·민감도 화면
+│       ├── Doo_threshold_settings.py     # Threshold 계산·공통 함수
+│       ├── risk_segments.py              # 위험 고객 목록·세분화·다운로드
+│       ├── individual_prediction.py      # 단일 고객 이탈 예측
+│       └── roi_simulator.py              # 캠페인 ROI 시뮬레이션
 └── tests/
+    ├── __init__.py                       # 테스트 패키지 정의
+    └── test_inference.py                 # 저장 Pipeline 단일 고객 추론 테스트
 ```
-
-### 폴더별 상세 설명
-
-| 경로 | 역할 | 주요 내용 |
-|---|---|---|
-| `assets/streamlit/` | README 화면 자료 | Streamlit 주요 기능을 보여주는 캡처 이미지 5개 |
-| `data/raw/` | 원본 데이터 | UCI Online Retail II 원본 거래 데이터 |
-| `data/preprocessed/` | 학습용 데이터 | 고객 단위로 변환한 Train·Validation·Test Feature와 Target, 저장 전처리기 |
-| `notebooks/` | 분석 및 실험 기록 | 데이터 점검, 거래·고객 EDA, 전처리 검증, 후보 모델 비교 과정 |
-| `src/` | 데이터 처리 코드 | 원본 로드, 정상 거래 필터링, 고객 Feature·Target 생성, 데이터 분할과 전처리 |
-| `models/final/` | 최종 모델 산출물 | XGBoost 모델, 전처리기, 전처리와 모델을 결합한 추론 Pipeline |
-| `models/kmk/`, `models/lsy/` | Random Forest 실험 | 팀원별 Random Forest 모델과 실험 Notebook |
-| `models/jhd/` | XGBoost 실험 | XGBoost 후보 학습, 임계값 최적화와 모델 비교 |
-| `models/ksj/` | Logistic Regression 실험 | 선형 기준 모델 학습과 하이퍼파라미터 비교 |
-| `models/hyn/` | LightGBM 실험 | LightGBM 학습, Feature Importance와 SHAP 분석 |
-| `artifacts/` | 평가·재현 메타데이터 | 성능표, 오류 분석, Calibration, Feature 정의와 모델 메타데이터 |
-| `reports/` | 결과 보고서 | 데이터 전처리 결과서, 인공지능 학습 결과서와 보고서용 그래프 |
-| `streamlit_app/` | 예측 서비스 | 모델 성능, 캠페인 기준, 위험 고객, 개별 예측과 ROI 화면 |
-| `tests/` | 추론 검증 | 저장 Pipeline 로드, 입력 Feature와 단일 고객 예측 테스트 |
-
-### 주요 실행 파일
-
-| 파일 | 설명 |
-|---|---|
-| `src/data.py` | 원본 거래 데이터 로드 및 정상 구매 조건 적용 |
-| `src/features.py` | 고객 단위 Feature 집계와 90일 재구매 이탈 Target 생성 |
-| `src/transforms.py` | 로그 변환, 스케일링 등 공통 전처리 함수 |
-| `src/prepare_data.py` | Train·Validation·Test 분할, 전처리 학습과 결과 저장 |
-| `notebooks/model_experiments.ipynb` | 저장 후보 모델의 공통 Validation 비교와 최종 평가 재현 |
-| `streamlit_app/app.py` | Streamlit 서비스 진입점과 화면 구성 |
-| `streamlit_app/model_loader.py` | 최종 Pipeline과 모델 산출물 로드 |
-| `streamlit_app/customer_scoring.py` | 고객 이탈 점수 계산과 위험 고객 데이터 구성 |
-| `tests/test_inference.py` | 저장 Pipeline을 이용한 신규 고객 추론 검증 |
 
 ---
 
