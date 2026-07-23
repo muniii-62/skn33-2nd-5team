@@ -36,32 +36,32 @@
 
 <table>
   <tr>
-    <td align="center"><img src="https://github.com/user-attachments/assets/e10357cb-19ec-4651-b25c-1aee30a1674f" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/d7ed0097-03ee-4e24-91d1-c72274685cd5" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/f0a8eb97-8453-4629-bb0e-683736f2e06b" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/732c55fd-b4a0-45eb-b9d3-767e3d7db91b" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
-    <td align="center"><img src="https://github.com/user-attachments/assets/c2a45d8f-7c50-4a59-bcc6-fe9b150302fc" width="100" height="100" style="object-fit: cover; border-radius: 50%;"/></td>
+    <td width="20%" align="center"><img src="https://github.com/user-attachments/assets/e10357cb-19ec-4651-b25c-1aee30a1674f" width="76" height="76"/></td>
+    <td width="20%" align="center"><img src="https://github.com/user-attachments/assets/d7ed0097-03ee-4e24-91d1-c72274685cd5" width="76" height="76"/></td>
+    <td width="20%" align="center"><img src="https://github.com/user-attachments/assets/f0a8eb97-8453-4629-bb0e-683736f2e06b" width="76" height="76"/></td>
+    <td width="20%" align="center"><img src="https://github.com/user-attachments/assets/732c55fd-b4a0-45eb-b9d3-767e3d7db91b" width="76" height="76"/></td>
+    <td width="20%" align="center"><img src="https://github.com/user-attachments/assets/c2a45d8f-7c50-4a59-bcc6-fe9b150302fc" width="76" height="76"/></td>
   </tr>
   <tr>
-    <td align="center"><b>👑 <a href="https://github.com/tender0602">김문규 (kmk)</a></b></td>
-    <td align="center"><b><a href="https://github.com/SKN33-ai-camp-lsy04">이서영 (lsy)</a></b></td>
-    <td align="center"><b><a href="https://github.com/gusen8684">정현두 (jhd)</a></b></td>
-    <td align="center"><b><a href="https://github.com/tangerine0101">권세진 (ksj)</a></b></td>
-    <td align="center"><b><a href="https://github.com/heoyuna0819-creator">허유나 (hyn)</a></b></td>
+    <td align="center"><b>👑 김문규 (kmk)</b></td>
+    <td align="center"><b>이서영 (lsy)</b></td>
+    <td align="center"><b>정현두 (jhd)</b></td>
+    <td align="center"><b>권세진 (ksj)</b></td>
+    <td align="center"><b>허유나 (hyn)</b></td>
   </tr>
   <tr>
-    <td align="center"><a href="https://github.com/tender0602">github.com/tender0602</a></td>
-    <td align="center"><a href="https://github.com/SKN33-ai-camp-lsy04">github.com/SKN33-ai-camp-lsy04</a></td>
-    <td align="center"><a href="https://github.com/gusen8684">github.com/gusen8684</a></td>
-    <td align="center"><a href="https://github.com/tangerine0101">github.com/tangerine0101</a></td>
-    <td align="center"><a href="https://github.com/heoyuna0819-creator">github.com/heoyuna0819-creator</a></td>
+    <td align="center"><a href="https://github.com/tender0602">github.com/<br>tender0602</a></td>
+    <td align="center"><a href="https://github.com/SKN33-ai-camp-lsy04">github.com/<br>SKN33-ai-camp-lsy04</a></td>
+    <td align="center"><a href="https://github.com/gusen8684">github.com/<br>gusen8684</a></td>
+    <td align="center"><a href="https://github.com/tangerine0101">github.com/<br>tangerine0101</a></td>
+    <td align="center"><a href="https://github.com/heoyuna0819-creator">github.com/<br>heoyuna0819-creator</a></td>
   </tr>
   <tr>
-    <td align="center">팀장 · EDA · 데이터 전처리 · Target 정의 · Random Forest</td>
-    <td align="center">Random Forest · 하이퍼파라미터 튜닝 · 발표</td>
-    <td align="center">XGBoost · 임계값 최적화 · Streamlit 개발</td>
-    <td align="center">Logistic Regression · Streamlit 개발 · PPT</td>
-    <td align="center">LightGBM · Feature Importance · SHAP · PPT</td>
+    <td align="center">팀장 · EDA<br>데이터 전처리<br>Target 정의<br>Random Forest</td>
+    <td align="center">Random Forest<br>하이퍼파라미터 튜닝<br>발표</td>
+    <td align="center">XGBoost<br>임계값 최적화<br>Streamlit 개발</td>
+    <td align="center">Logistic Regression<br>Streamlit 개발<br>PPT</td>
+    <td align="center">LightGBM<br>Feature Importance<br>SHAP · PPT</td>
   </tr>
 </table>
 
@@ -408,17 +408,38 @@ Project2/
 └── tests/
 ```
 
-### 시스템 흐름
+### 폴더별 상세 설명
 
-```mermaid
-flowchart LR
-    A["원본 거래 데이터"] --> B["품질 점검·EDA"]
-    B --> C["고객 스냅샷·Target 생성"]
-    C --> D["Train 기반 전처리"]
-    D --> E["후보 모델 비교"]
-    E --> F["XGBoost·Threshold 0.38 저장"]
-    F --> G["Streamlit 예측·캠페인 분석"]
-```
+| 경로 | 역할 | 주요 내용 |
+|---|---|---|
+| `assets/streamlit/` | README 화면 자료 | Streamlit 주요 기능을 보여주는 캡처 이미지 5개 |
+| `data/raw/` | 원본 데이터 | UCI Online Retail II 원본 거래 데이터 |
+| `data/preprocessed/` | 학습용 데이터 | 고객 단위로 변환한 Train·Validation·Test Feature와 Target, 저장 전처리기 |
+| `notebooks/` | 분석 및 실험 기록 | 데이터 점검, 거래·고객 EDA, 전처리 검증, 후보 모델 비교 과정 |
+| `src/` | 데이터 처리 코드 | 원본 로드, 정상 거래 필터링, 고객 Feature·Target 생성, 데이터 분할과 전처리 |
+| `models/final/` | 최종 모델 산출물 | XGBoost 모델, 전처리기, 전처리와 모델을 결합한 추론 Pipeline |
+| `models/kmk/`, `models/lsy/` | Random Forest 실험 | 팀원별 Random Forest 모델과 실험 Notebook |
+| `models/jhd/` | XGBoost 실험 | XGBoost 후보 학습, 임계값 최적화와 모델 비교 |
+| `models/ksj/` | Logistic Regression 실험 | 선형 기준 모델 학습과 하이퍼파라미터 비교 |
+| `models/hyn/` | LightGBM 실험 | LightGBM 학습, Feature Importance와 SHAP 분석 |
+| `artifacts/` | 평가·재현 메타데이터 | 성능표, 오류 분석, Calibration, Feature 정의와 모델 메타데이터 |
+| `reports/` | 결과 보고서 | 데이터 전처리 결과서, 인공지능 학습 결과서와 보고서용 그래프 |
+| `streamlit_app/` | 예측 서비스 | 모델 성능, 캠페인 기준, 위험 고객, 개별 예측과 ROI 화면 |
+| `tests/` | 추론 검증 | 저장 Pipeline 로드, 입력 Feature와 단일 고객 예측 테스트 |
+
+### 주요 실행 파일
+
+| 파일 | 설명 |
+|---|---|
+| `src/data.py` | 원본 거래 데이터 로드 및 정상 구매 조건 적용 |
+| `src/features.py` | 고객 단위 Feature 집계와 90일 재구매 이탈 Target 생성 |
+| `src/transforms.py` | 로그 변환, 스케일링 등 공통 전처리 함수 |
+| `src/prepare_data.py` | Train·Validation·Test 분할, 전처리 학습과 결과 저장 |
+| `notebooks/model_experiments.ipynb` | 저장 후보 모델의 공통 Validation 비교와 최종 평가 재현 |
+| `streamlit_app/app.py` | Streamlit 서비스 진입점과 화면 구성 |
+| `streamlit_app/model_loader.py` | 최종 Pipeline과 모델 산출물 로드 |
+| `streamlit_app/customer_scoring.py` | 고객 이탈 점수 계산과 위험 고객 데이터 구성 |
+| `tests/test_inference.py` | 저장 Pipeline을 이용한 신규 고객 추론 검증 |
 
 ---
 
@@ -524,7 +545,6 @@ streamlit run streamlit_app/app.py
 | 별도 확률 보정 미적용 | 0.38을 정확한 실제 이탈 확률로 해석할 수 없음 | Calibration 재학습과 운영 데이터 검증 |
 | 고객 ID 미보존 | 개별 오류 고객을 원거래까지 추적하기 어려움 | 모델 입력과 분리된 익명 키 파일 보존 |
 | 모델 성능과 캠페인 효과의 차이 | 예측이 실제 이탈 방지로 이어졌는지 확인할 수 없음 | 무작위 대조군을 둔 A/B 테스트 |
-| 데이터 드리프트 가능성 | 시간이 지나면 고객 행동과 성능이 변할 수 있음 | 입력 분포·성능 모니터링과 재학습 기준 수립 |
 
 관찰된 상관관계를 인과관계로 단정하지 않으며, 예측 결과는 고객 관리 의사결정을 보조하는 자료로 사용해야 합니다.
 
@@ -537,7 +557,6 @@ streamlit run streamlit_app/app.py
 #### 잘한 점
 
 - 거래 상품 행을 고객 스냅샷으로 전환하고 재구매 이탈 Target을 직접 정의했습니다.
-
 - 팀원별 후보를 공용 Validation과 동일한 운영 규칙으로 다시 비교했습니다.
 - 모델 학습에 그치지 않고 저장 Pipeline, 캠페인 기준, 위험군, ROI 화면으로 연결했습니다.
 - 전처리·학습 결과서, 메타데이터, 테스트 코드로 재현 근거를 남겼습니다.
@@ -555,12 +574,6 @@ streamlit run streamlit_app/app.py
 - 저장된 전처리기와 모델을 하나의 Pipeline으로 제공해야 신규 입력을 안정적으로 처리할 수 있었습니다.
 
 
-#### 다음에 개선할 점
-
-- 여러 기준일로 시간 순서 검증을 수행하겠습니다.
-- 실제 캠페인 비용·전환율·고객가치를 수집해 ROI 기반 Threshold를 선택하겠습니다.
-- 고객 ID를 안전한 별도 키로 보존해 FN·FP 사례를 원거래까지 분석하겠습니다.
-- 운영 데이터 드리프트와 모델 재학습 절차를 자동화하겠습니다.
 
 ### 개인 회고
 
@@ -615,17 +628,3 @@ streamlit run streamlit_app/app.py
 - [`artifacts/model_metadata.json`](artifacts/model_metadata.json): 최종 모델·Threshold 메타데이터
 - [`artifacts/metrics.csv`](artifacts/metrics.csv): Validation 후보와 Test 성능
 - [`tests/test_inference.py`](tests/test_inference.py): 저장 Pipeline 추론 검증
-
-## 제출 전 확인
-
-- [x] 모든 팀원의 GitHub 계정 링크와 개인별 회고를 추가했습니다.
-- [x] 데이터 출처, URL, 라이선스를 작성했습니다.
-- [x] Target과 예측 시점을 명확히 작성했습니다.
-- [x] 주요 그래프에 해석을 작성했습니다.
-- [x] 동일한 Validation 조건에서 후보 모델을 비교했습니다.
-- [x] 최종 모델과 Threshold를 Validation으로 선택했습니다.
-- [x] Test를 최종 평가에만 사용했습니다.
-- [x] 저장된 모델을 Streamlit이 실제로 불러오도록 구성했습니다.
-- [x] README의 주요 성능 수치를 결과서와 일치시켰습니다.
-- [x] 새 GitHub 저장소 URL로 설치 명령을 교체했습니다.
-- [x] 실제 Streamlit 수행 화면 캡처를 추가했습니다.
