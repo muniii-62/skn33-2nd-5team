@@ -20,3 +20,5 @@ data/
 
 # 주피터 체크포인트
 .ipynb_checkpoints/
+
+.agents
